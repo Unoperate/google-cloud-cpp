@@ -35,6 +35,13 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <google/protobuf/field_mask.pb.h>
+#include <google/protobuf/util/time_util.h>
+#include "google/cloud/bigtable/emulator/filter.h"
+#include "google/cloud/bigtable/emulator/column_family.h"
+#include "google/cloud/bigtable/emulator/row_streamer.h"
+#include "absl/types/variant.h"
+#include <map>
 #include <stack>
 
 namespace google {
