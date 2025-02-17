@@ -102,6 +102,16 @@ class ColumnRow {
     cells_.erase(timestamp_it);
   }
 
+  std::map<std::chrono::milliseconds, std::string>::iterator find(
+      std::chrono::milliseconds const& timestamp) {
+    return cells_.find(timestamp);
+  }
+
+  void erase(
+      std::map<std::chrono::milliseconds, std::string>::iterator timestamp_it) {
+    cells_.erase(timestamp_it);
+  }
+
  private:
   std::map<std::chrono::milliseconds, std::string> cells_;
 };
@@ -167,6 +177,15 @@ class ColumnFamilyRow {
   }
   const_iterator upper_bound(std::string const& column_qualifier) const {
     return columns_.upper_bound(column_qualifier);
+  }
+
+  std::map<std::string, ColumnRow>::iterator find(
+      std::string const& column_qualifier) {
+    return columns_.find(column_qualifier);
+  }
+
+  void erase(std::map<std::string, ColumnRow>::iterator column_it) {
+    columns_.erase(column_it);
   }
 
   std::map<std::string, ColumnRow>::iterator find(
@@ -298,6 +317,15 @@ class ColumnFamily {
   }
 
   void clear() { rows_.clear(); }
+
+  std::map<std::string, ColumnFamilyRow>::iterator find(
+      std::string const& row_key) {
+    return rows_.find(row_key);
+  }
+
+  void erase(std::map<std::string, ColumnFamilyRow>::iterator row_it) {
+    rows_.erase(row_it);
+  }
 
  private:
   std::map<std::string, ColumnFamilyRow> rows_;
