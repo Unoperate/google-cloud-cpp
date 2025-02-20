@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <chrono>
-#include <type_traits>
-#include <re2/re2.h>
 #include "google/cloud/bigtable/emulator/table.h"
 #include "google/cloud/bigtable/emulator/column_family.h"
 #include "google/cloud/bigtable/emulator/filter.h"
@@ -711,73 +708,78 @@ void RowTransaction::Undo() {
   }
 }
 
-
-Status RowTransaction::SetCell(::google::bigtable::v2::Mutation_SetCell const &set_cell) {
+Status RowTransaction::SetCell(
+    ::google::bigtable::v2::Mutation_SetCell const& set_cell) {
   auto maybe_column_family = table_->FindColumnFamily(set_cell);
-      if (!maybe_column_family) {
-        return maybe_column_family.status();
-      }
+  if (!maybe_column_family) {
+    return maybe_column_family.status();
+  }
 
-      auto column_family = maybe_column_family->get();
+  auto column_family = maybe_column_family->get();
 
-      bool row_existed = true;
-      // First if the key introduces a new ColumnFamilyRow, we need to
-      // arrange for the entire ColumnFamilyrow to go when we revert
-      // the transaction.
-      auto row_key_it = column_family.find(request_.row_key());
-      if (row_key_it == column_family.end()) {
-        row_existed = false;
-      }
+  bool row_existed = true;
+  // First if the key introduces a new ColumnFamilyRow, we need to
+  // arrange for the entire ColumnFamilyrow to go when we revert
+  // the transaction.
+  auto row_key_it = column_family.find(request_.row_key());
+  if (row_key_it == column_family.end()) {
+    row_existed = false;
+  }
 
-      ::google::cloud::bigtable::emulator::ColumnFamilyRow column_family_row;
-      if (row_existed) {
-        column_family_row = row_key_it->second;
-      }
+  ::google::cloud::bigtable::emulator::ColumnFamilyRow column_family_row;
+  if (row_existed) {
+    column_family_row = row_key_it->second;
+  }
 
-      bool column_existed = true;
-      auto column_row_it = column_family_row.find(set_cell.column_qualifier());
-      if (column_row_it == column_family_row.end()) {
-        column_existed = false;
-      }
+  bool column_existed = true;
+  auto column_row_it = column_family_row.find(set_cell.column_qualifier());
+  if (column_row_it == column_family_row.end()) {
+    column_existed = false;
+  }
 
-      bool cell_existed = true;
-      if (!column_existed) {
-        cell_existed = false;
-      } else {
-        auto timestamp_it = column_row_it->second.find(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::microseconds(set_cell.timestamp_micros())));
-        if (timestamp_it == column_row_it->second.end()) {
-          cell_existed = false;
-        }
-      }
+  bool cell_existed = true;
+  if (!column_existed) {
+    cell_existed = false;
+  } else {
+    auto timestamp_it = column_row_it->second.find(
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::microseconds(set_cell.timestamp_micros())));
+    if (timestamp_it == column_row_it->second.end()) {
+      cell_existed = false;
+    }
+  }
 
-      column_family.SetCell(
-          request_.row_key(), set_cell.column_qualifier(),
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-              std::chrono::microseconds(set_cell.timestamp_micros())),
-          set_cell.value());
+  column_family.SetCell(
+      request_.row_key(), set_cell.column_qualifier(),
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::microseconds(set_cell.timestamp_micros())),
+      set_cell.value());
 
-      if (!row_existed) {
-        row_key_it = column_family.find(request_.row_key());
-        DeleteRow delete_row = {row_key_it, column_family};
-        undo_.emplace(delete_row);
-      }
+  if (!row_existed) {
+    row_key_it = column_family.find(request_.row_key());
+    DeleteRow delete_row = {row_key_it, column_family};
+    undo_.emplace(delete_row);
+  }
 
-      if (!column_existed) {
-        column_row_it = column_family_row.find(set_cell.column_qualifier());
-        DeleteColumn delete_column_row = {column_row_it, column_family_row};
-        undo_.emplace(delete_column_row);
-      }
+  if (!column_existed) {
+    column_row_it = column_family_row.find(set_cell.column_qualifier());
+    DeleteColumn delete_column_row = {column_row_it, column_family_row};
+    undo_.emplace(delete_column_row);
+  }
 
-      auto timestamp_it = column_row_it->second.find(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::microseconds(set_cell.timestamp_micros())));
-      if (!cell_existed) {
-        DeleteValue delete_value = {column_row_it, timestamp_it->first};
-        undo_.emplace(delete_value);
-      } else {
-        RestoreValue restore_value = {column_row_it, timestamp_it->first, std::move(timestamp_it->second)};
-        undo_.emplace(restore_value);
-      }
+  auto timestamp_it = column_row_it->second.find(
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::microseconds(set_cell.timestamp_micros())));
+  if (!cell_existed) {
+    DeleteValue delete_value = {column_row_it, timestamp_it->first};
+    undo_.emplace(delete_value);
+  } else {
+    RestoreValue restore_value = {column_row_it, timestamp_it->first,
+                                  std::move(timestamp_it->second)};
+    undo_.emplace(restore_value);
+  }
 
-      return Status();
+  return Status();
 }
 
 void RowTransaction::Undo() {
@@ -785,34 +787,35 @@ void RowTransaction::Undo() {
     auto op = undo_.top();
     undo_.pop();
 
-    if (auto *restore_value = absl::get_if<RestoreValue>(&op)) {
+    if (auto* restore_value = absl::get_if<RestoreValue>(&op)) {
       auto column_row = restore_value->column_row_it_->second;
-      column_row.find(restore_value->timestamp_)->second = std::move(restore_value->value_);
+      column_row.find(restore_value->timestamp_)->second =
+          std::move(restore_value->value_);
       continue;
     }
 
-    if (auto *delete_value = absl::get_if<DeleteValue>(&op)) {
+    if (auto* delete_value = absl::get_if<DeleteValue>(&op)) {
       auto column_row = delete_value->column_row_it_->second;
       auto timestamp_it = column_row.find(delete_value->timestamp_);
       column_row.erase(timestamp_it);
       continue;
     }
 
-    if (auto *delete_row = absl::get_if<DeleteRow>(&op)) {
+    if (auto* delete_row = absl::get_if<DeleteRow>(&op)) {
       delete_row->column_family.erase(delete_row->row_it);
       continue;
     }
 
-    if (auto *delete_column = absl::get_if<DeleteColumn>(&op)) {
+    if (auto* delete_column = absl::get_if<DeleteColumn>(&op)) {
       delete_column->column_family_row.erase(delete_column->column_row_it);
       continue;
     }
 
-    // If we get here, there is an type of undo log that has not been implemented!
+    // If we get here, there is an type of undo log that has not been
+    // implemented!
     std::abort();
   }
 }
-
 
 }  // namespace emulator
 }  // namespace bigtable
