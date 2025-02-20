@@ -42,6 +42,7 @@
 #include "google/cloud/bigtable/emulator/row_streamer.h"
 #include "absl/types/variant.h"
 #include <map>
+#include <memory>
 #include <stack>
 
 namespace google {
