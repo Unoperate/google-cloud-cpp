@@ -915,7 +915,8 @@ TEST(TransactonRollback, TestRestoreValue) {
   // RestoreValue will restore the previous value in cell with
   // timestamp 1000.
   std::vector<SetCellParams> w;
-  // Everything is the same but we try and modify the value in the cell cell set above.
+  // Everything is the same but we try and modify the value in the cell cell set
+  // above.
   p.data = "new data";
   w.push_back(p);
 
@@ -926,9 +927,9 @@ TEST(TransactonRollback, TestRestoreValue) {
   w.push_back(p);
 
   status = set_cells(table, table_name, row_key, w);
-  ASSERT_NE(status.ok(), true); // The whole mutation chain should
-                                // fail because the 2nd mutation
-                                // contains an invalid column family.
+  ASSERT_NE(status.ok(), true);  // The whole mutation chain should
+                                 // fail because the 2nd mutation
+                                 // contains an invalid column family.
 
   // And the first mutation should have been rolled back by
   // RestoreValue and so should contain the old value, and not "new
@@ -936,7 +937,6 @@ TEST(TransactonRollback, TestRestoreValue) {
   ASSERT_STATUS_OK(has_cell(table, valid_column_family_name, row_key,
                             column_qualifer, good_mutation_timestamp_micros,
                             good_mutation_data));
-
 }
 
 }  // namespace emulator
