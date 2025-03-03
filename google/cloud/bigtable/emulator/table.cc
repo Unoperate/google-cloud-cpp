@@ -722,7 +722,7 @@ Status RowTransaction::SetCell(
   bool cell_existed = true;
 
   auto row_key_it = column_family.find(request_.row_key());
-
+  std::string value_to_restore;
   if (row_key_it == column_family.end()) {
     row_existed = false;
     column_existed = false;
@@ -739,6 +739,8 @@ Status RowTransaction::SetCell(
               std::chrono::microseconds(set_cell.timestamp_micros())));
       if (timestamp_it == column_row_it->second.end()) {
         cell_existed = false;
+      } else{
+        value_to_restore = timestamp_it->second;
       }
     }
   }
@@ -773,7 +775,7 @@ Status RowTransaction::SetCell(
     undo_.emplace(delete_value);
   } else {
     RestoreValue restore_value = {column_row_it, timestamp_it->first,
-                                  std::move(timestamp_it->second)};
+                                  std::move(value_to_restore)};
     undo_.emplace(restore_value);
   }
 
