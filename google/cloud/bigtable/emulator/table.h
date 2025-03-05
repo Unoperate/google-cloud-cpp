@@ -37,6 +37,7 @@
 #include <mutex>
 #include <google/protobuf/field_mask.pb.h>
 #include <google/protobuf/util/time_util.h>
+#include <chrono>
 #include <map>
 #include <memory>
 #include <stack>
@@ -114,6 +115,17 @@ class Table : public std::enable_shared_from_this<Table> {
   mutable std::mutex mu_;
   google::bigtable::admin::v2::Table schema_;
   std::map<std::string, std::shared_ptr<ColumnFamily>> column_families_;
+};
+
+struct RestoreRow {
+  std::map<std::string, std::shared_ptr<ColumnFamily>>::iterator table_it;
+  std::string row_key;
+  struct Cell {
+    std::string column_qualifer;
+    std::chrono::milliseconds timestamp;
+    std::string value;
+  };
+  std::vector<Cell> cells;
 };
 
 struct RestoreValue {

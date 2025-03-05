@@ -708,6 +708,57 @@ void RowTransaction::Undo() {
   }
 }
 
+Status RowTransaction::DeleteFromFamily(
+    ::google::bigtable::v2::Mutation_DeleteFromFamily const&
+        delete_from_family) {
+  auto maybe_column_family = table_->FindColumnFamily(delete_from_family);
+  if (!maybe_column_family) {
+    return maybe_column_family.status();
+  }
+
+  auto table_it = table_->find(delete_from_family.family_name());
+  if (table_it == table_->end()) {
+    return Status(StatusCode::kNotFound,
+                  absl::StrFormat("column family %s not found in table",
+                                  delete_from_family.family_name()),
+                  ErrorInfo());
+  }
+
+  if (auto column_family_it = table_it->second->find(request_.row_key());
+      column_family_it != table_it->second->end()) {
+    RestoreRow restore_row;
+
+    restore_row.table_it = table_it;
+    restore_row.row_key = request_.row_key();
+    std::vector<RestoreRow::Cell> cells;
+    for (auto const& column : column_family_it->second) {
+      for (auto const& column_row : column.second) {
+        RestoreRow::Cell cell;
+
+        cell.column_qualifer = std::move(column.first);
+        cell.timestamp = column_row.first;  // Wait, is this correct?
+        cell.value = std::move(column_row.second);
+        cells.push_back(cell);
+      }
+    }
+    restore_row.cells = cells;
+    table_it->second->DeleteRow(request_.row_key());  // Is certain
+                                                      // to succeed
+                                                      // unless we
+                                                      // run out of
+                                                      // memory.
+    undo_.emplace(restore_row);
+  } else {
+    // The row does not exist
+    return Status(StatusCode::kNotFound,
+                  absl::StrFormat("row key %s not found in column family %s",
+                                  request_.row_key(), table_it->first),
+                  ErrorInfo());
+  }
+
+  return Status();
+}
+
 Status RowTransaction::SetCell(
     ::google::bigtable::v2::Mutation_SetCell const& set_cell) {
   auto maybe_column_family = table_->FindColumnFamily(set_cell);
