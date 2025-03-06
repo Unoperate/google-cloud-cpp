@@ -1079,6 +1079,55 @@ TEST(TransactonRollback, DeleteRow) {
   ASSERT_NE(status.ok(), true);
 }
 
+// Does the DeleteFromfamily mutation work to delete a row from a
+// specific family and does it rows with the same row key in othe
+// column families alone?
+TEST(TransactonRollback, DeleteFromFamilyBasicFunction) {
+  ::google::bigtable::admin::v2::Table schema;
+  ::google::bigtable::admin::v2::ColumnFamily column_family;
+
+  auto const* const table_name = "projects/test/instances/test/tables/test";
+  auto const* const row_key = "0";
+  auto const* const column_family_name = "test";
+  auto const* const column_qualifer = "test";
+  auto const timestamp_micros = 1234;
+  auto const* data = "test";
+
+  auto const* const second_column_family_name = "test2";
+
+  std::vector<std::string> column_families = {column_family_name, second_column_family_name};
+  auto maybe_table = create_table(table_name, column_families);
+
+  ASSERT_STATUS_OK(maybe_table);
+  auto table = maybe_table.value();
+
+  std::vector<SetCellParams> v;
+  SetCellParams p = {column_family_name, column_qualifer, timestamp_micros,
+                     data};
+  v.push_back(p);
+
+  p = {second_column_family_name, column_qualifer, timestamp_micros, data};
+  v.push_back(p);
+
+  auto status = set_cells(table, table_name, row_key, v);
+  ASSERT_STATUS_OK(status);
+  ASSERT_STATUS_OK(has_cell(table, column_family_name, row_key, column_qualifer,
+                            timestamp_micros, data));
+  ASSERT_STATUS_OK(
+      has_column(table, column_family_name, row_key, column_qualifer));
+  ASSERT_STATUS_OK(has_row(table, column_family_name, row_key));
+
+  // Having established that the data is there, test the basic
+  // functionality of the DeleteFromFamily mutation by trying to
+  // delete it.
+  ASSERT_STATUS_OK(
+      delete_from_families(table, table_name, row_key, {column_family_name}));
+  ASSERT_NE(true, has_row(table, column_family_name, row_key).ok());
+
+  // Ensure that we did not delete a row in anothe column family.
+  ASSERT_EQ(true, has_row(table, second_column_family_name, row_key).ok());
+}
+
 }  // namespace emulator
 }  // namespace bigtable
 }  // namespace cloud
