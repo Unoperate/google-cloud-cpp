@@ -117,7 +117,7 @@ class Table : public std::enable_shared_from_this<Table> {
   std::map<std::string, std::shared_ptr<ColumnFamily>> column_families_;
 };
 
-struct RestoreRow {
+struct RestoreColumnFamilyRow {
   std::map<std::string, std::shared_ptr<ColumnFamily>>::iterator table_it_;
   std::string row_key_;
   struct Cell {
