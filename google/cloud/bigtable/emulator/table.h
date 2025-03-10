@@ -118,14 +118,14 @@ class Table : public std::enable_shared_from_this<Table> {
 };
 
 struct RestoreColumnFamilyRow {
-  std::map<std::string, std::shared_ptr<ColumnFamily>>::iterator table_it_;
-  std::string row_key_;
+  std::map<std::string, std::shared_ptr<ColumnFamily>>::iterator table_it;
+  std::string row_key;
   struct Cell {
-    std::string column_qualifer_;
-    std::chrono::milliseconds timestamp_;
-    std::string value_;
+    std::string column_qualifer;
+    std::chrono::milliseconds timestamp;
+    std::string value;
   };
-  std::vector<Cell> cells_;
+  std::vector<Cell> cells;
 };
 
 struct RestoreValue {
