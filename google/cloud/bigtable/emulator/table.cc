@@ -827,7 +827,11 @@ Status RowTransaction::SetCell(
     DeleteValue delete_value = {column_row_it, timestamp_it->first};
     undo_.emplace(delete_value);
   } else {
-    RestoreValue restore_value = {column_row_it, timestamp_it->first,
+    RestoreValue restore_value = {column_row_it,
+                                  column_family,
+                                  column_family_row_it->first,
+                                  std::move(set_cell.column_qualifier()),
+                                  timestamp_it->first,
                                   std::move(value_to_restore)};
     undo_.emplace(restore_value);
   }
@@ -842,9 +846,10 @@ void RowTransaction::Undo() {
 
     auto* restore_value = absl::get_if<RestoreValue>(&op);
     if (restore_value) {
-      auto& column_row = restore_value->column_row_it->second;
-      column_row.find(restore_value->timestamp)->second =
-          std::move(restore_value->value);
+      restore_value->column_family.SetCell(
+          std::move(restore_value->row_key),
+          std::move(restore_value->column_qualifier), restore_value->timestamp,
+          std::move(restore_value->value));
       continue;
     }
 
