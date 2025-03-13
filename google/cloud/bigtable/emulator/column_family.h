@@ -15,6 +15,7 @@
 #ifndef GOOGLE_CLOUD_CPP_GOOGLE_CLOUD_BIGTABLE_EMULATOR_COLUMN_FAMILY_H
 #define GOOGLE_CLOUD_CPP_GOOGLE_CLOUD_BIGTABLE_EMULATOR_COLUMN_FAMILY_H
 
+#include "google/cloud/bigtable/cell.h"
 #include "google/cloud/bigtable/emulator/cell_view.h"
 #include "google/cloud/bigtable/emulator/filter.h"
 #include "google/cloud/bigtable/emulator/filtered_map.h"
