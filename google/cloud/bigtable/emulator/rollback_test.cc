@@ -1187,6 +1187,14 @@ TEST(TransactonRollback, DeleteFromFamilyRollback) {
   ASSERT_STATUS_OK(has_row(table, column_family_name, row_key));
 }
 
+::google::bigtable::v2::TimestampRange* new_timestamp_range(int64_t start, int64_t end) {
+  auto* range = new(::google::bigtable::v2::TimestampRange);
+  range->set_start_timestamp_micros(start);
+  range->set_end_timestamp_micros(end);
+
+  return range;
+}
+
 // Does DeleteFromColumn basically work?
 TEST(TransactonRollback, DeleteFromColumnBasicFunction) {
   ::google::bigtable::admin::v2::Table schema;
@@ -1219,12 +1227,13 @@ TEST(TransactonRollback, DeleteFromColumnBasicFunction) {
   ASSERT_STATUS_OK(has_cell(table, column_family_name, row_key, column_qualifer,
                             3000, data));
 
-  auto* range = new(::google::bigtable::v2::TimestampRange);
-  range->set_start_timestamp_micros(v[0].timestamp_micros);
-  range->set_end_timestamp_micros(v[2].timestamp_micros + 1000);
+  std::vector<DeleteFromColumnParams> dv = {
+      {column_family_name, column_qualifer,
+       new_timestamp_range(v[0].timestamp_micros,
+                           v[2].timestamp_micros + 1000)}};
 
-  ASSERT_STATUS_OK(delete_from_column(
-      table, table_name, row_key, column_family_name, column_qualifer, range));
+  ASSERT_STATUS_OK(delete_from_columns(table, table_name, row_key, dv));
+
   status = has_column(table, column_family_name, row_key, column_qualifer);
   ASSERT_EQ(false, status.ok());
 }
