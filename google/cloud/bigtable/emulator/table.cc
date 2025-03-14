@@ -708,6 +708,31 @@ void RowTransaction::Undo() {
   }
 }
 
+Status RowTransaction::DeleteFromColumn(
+    ::google::bigtable::v2::Mutation_DeleteFromColumn const&
+        delete_from_column) {
+  auto status = table_->FindColumnFamily(delete_from_column);
+  if (!status.ok()) {
+    return status.status();
+  }
+
+  auto& column_family = status->get();
+
+  auto deleted_cells = column_family.DeleteColumn(
+      request_.row_key(), delete_from_column.column_qualifier(),
+      delete_from_column.time_range());
+
+  for (auto cell : deleted_cells) {
+    RestoreValue restore_value = {column_family, request_.row_key(),
+                                  delete_from_column.column_qualifier(),
+                                  std::move(cell.timestamp),
+                                  std::move(cell.value)};
+    undo_.emplace(restore_value);
+  }
+
+  return Status();
+}
+
 Status RowTransaction::DeleteFromFamily(
     ::google::bigtable::v2::Mutation_DeleteFromFamily const&
         delete_from_family) {
