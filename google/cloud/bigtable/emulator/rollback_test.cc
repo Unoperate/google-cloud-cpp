@@ -1187,6 +1187,46 @@ TEST(TransactonRollback, DeleteFromFamilyRollback) {
   ASSERT_STATUS_OK(has_row(table, column_family_name, row_key));
 }
 
+// Does DeleteFromColumn basically work?
+TEST(TransactonRollback, DeleteFromColumnBasicFunction) {
+  ::google::bigtable::admin::v2::Table schema;
+  ::google::bigtable::admin::v2::ColumnFamily column_family;
+
+  auto const* const table_name = "projects/test/instances/test/tables/test";
+  auto const* const row_key = "0";
+  auto const* const column_family_name = "test";
+  auto const* const column_qualifer = "test";
+  auto const* data = "test";
+
+  std::vector<std::string> column_families = {column_family_name};
+  auto maybe_table = create_table(table_name, column_families);
+
+  ASSERT_STATUS_OK(maybe_table);
+  auto table = maybe_table.value();
+
+  std::vector<SetCellParams> v = {
+      {column_family_name, column_qualifer, 1000, data},
+      {column_family_name, column_qualifer, 2000, data},
+      {column_family_name, column_qualifer, 3000, data},
+  };
+
+  auto status = set_cells(table, table_name, row_key, v);
+  ASSERT_STATUS_OK(status);
+  ASSERT_STATUS_OK(has_cell(table, column_family_name, row_key, column_qualifer,
+                            1000, data));
+  ASSERT_STATUS_OK(has_cell(table, column_family_name, row_key, column_qualifer,
+                            2000, data));
+  ASSERT_STATUS_OK(has_cell(table, column_family_name, row_key, column_qualifer,
+                            3000, data));
+
+  auto* range = new(::google::bigtable::v2::TimestampRange);
+  range->set_start_timestamp_micros(v[0].timestamp_micros);
+  range->set_end_timestamp_micros(v[2].timestamp_micros + 1000);
+
+  ASSERT_STATUS_OK(delete_from_column(
+      table, table_name, row_key, column_family_name, column_qualifer, range));
+}
+
 }  // namespace emulator
 }  // namespace bigtable
 }  // namespace cloud
