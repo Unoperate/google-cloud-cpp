@@ -200,8 +200,7 @@ class FilteredColumnFamilyStream::FilterApply {
 
   bool operator()(ColumnRegex const& column_regex) {
     parent_.column_regexes_.emplace_back(column_regex.regex);
-    return true;
-  }
+    return true;  }
 
  private:
   FilteredColumnFamilyStream& parent_;
