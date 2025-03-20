@@ -14,13 +14,54 @@
 
 #include "google/cloud/bigtable/emulator/column_family.h"
 #include <absl/types/optional.h>
+#include <google/bigtable/v2/types.pb.h>
+#include <array>
 #include <chrono>
+#include <cstdint>
+#include <iterator>
 #include <map>
+#include <string>
+#include <utility>
+#include <array>
 
 namespace google {
 namespace cloud {
 namespace bigtable {
 namespace emulator {
+
+uint64_t BigEndianToUint64(std::string const& s) {
+  if (s.length() != 8) {
+    std::abort();  // We expect to be called with a  8 byte string in big-endian
+                   // encoding only.
+  }
+  auto const* u_bytes = reinterpret_cast<uint8_t const*>(s.c_str());
+
+  return static_cast<uint64_t>(u_bytes[7]) |
+         static_cast<uint64_t>(u_bytes[6]) << 8 |
+         static_cast<uint64_t>(u_bytes[5]) << 16 |
+         static_cast<uint64_t>(u_bytes[4]) << 24 |
+         static_cast<uint64_t>(u_bytes[3]) << 32 |
+         static_cast<uint64_t>(u_bytes[2]) << 40 |
+         static_cast<uint64_t>(u_bytes[1]) << 48 |
+         static_cast<uint64_t>(u_bytes[0]) << 56;
+}
+
+std::string Uint64ToBigEndian(uint64_t i) {
+  std::array<uint8_t, 8> u_bytes;
+
+  u_bytes[0] = static_cast<uint8_t>(i >> 56);
+  u_bytes[1] = static_cast<uint8_t>(i >> 48);
+  u_bytes[2] = static_cast<uint8_t>(i >> 40);
+  u_bytes[3] = static_cast<uint8_t>(i >> 32);
+  u_bytes[4] = static_cast<uint8_t>(i >> 24);
+  u_bytes[5] = static_cast<uint8_t>(i >> 16);
+  u_bytes[6] = static_cast<uint8_t>(i >> 8);
+  u_bytes[7] = static_cast<uint8_t>(i);
+
+  std::string ret(std::begin(u_bytes), std::end(u_bytes));
+
+  return ret;
+}
 
 absl::optional<std::string> ColumnRow::SetCell(
     std::chrono::milliseconds timestamp, std::string const& value) {
@@ -110,6 +151,30 @@ absl::optional<Cell> ColumnFamilyRow::DeleteTimeStamp(
 absl::optional<std::string> ColumnFamily::SetCell(
     std::string const& row_key, std::string const& column_qualifier,
     std::chrono::milliseconds timestamp, std::string const& value) {
+  // To support complex types (e.g. aggregations), check if a cell
+  // with the timestamp already exists. If it does, derive a new value
+  // to set by calling UpdateCell_ with the existing and new values.
+  std::string update_value;
+  auto column_family_row_it = find(row_key);
+  if (column_family_row_it != end()) {
+    auto column_it = column_family_row_it->second.find(column_qualifier);
+    if (column_it != column_family_row_it->second.end()) {
+      auto column_row_it = column_it->second.find(timestamp);
+      if (column_row_it != column_it->second.end()) {
+        // We are updating an existing cell
+        update_value = UpdateCell_(column_row_it->second, value);
+        return rows_[row_key].SetCell(column_qualifier, timestamp,
+                                      update_value);
+      }
+    }
+  }
+
+  // FIXME: Also to support aggregation of complex types, we
+  // definitely also need an InitializeCell_ function since some
+  // aggregation types may require special treatment of an initial
+  // value. However for now the aggregations that we support, Sum, Min
+  // and Max do not requre this.
+
   return rows_[row_key].SetCell(column_qualifier, timestamp, value);
 }
 
@@ -294,6 +359,38 @@ bool FilteredColumnFamilyStream::PointToFirstCellAfterRowChange() const {
   }
   return false;
 }
+
+ColumnFamily::ColumnFamily(
+    absl::optional<google::bigtable::admin::v2::Type> value_type) {
+  value_type_ = std::move(value_type);
+
+  if (!value_type_.has_value()) {
+    return;
+  }
+
+  // FIXME: We currently only support big-endian uint64
+  // encoding. Check that the intent matches that as well (big-endian
+  // encoding in so-called ordered mode that supports only
+  // non-negative integers). However, the mutation code such as the one
+  // for AddCell will check this as well and reject mutations with
+  // encoding we don't support or negative numbers.
+  if (value_type_.value().has_aggregate_type()) {
+    auto aggregate_type = value_type_.value().aggregate_type();
+    switch (aggregate_type.aggregator_case()) {
+      case google::bigtable::admin::v2::Type::Aggregate::kSum:
+        UpdateCell_ = Sum_UpdateCell_BE_Uint64;
+        break;
+      case google::bigtable::admin::v2::Type::Aggregate::kMin:
+        UpdateCell_ = Min_UpdateCell_BE_Uint64;
+        break;
+      case google::bigtable::admin::v2::Type::Aggregate::kMax:
+        UpdateCell_ = Max_UpdateCell_BE_Uint64;
+        break;
+      default:
+        break;
+    }
+  }
+};
 
 }  // namespace emulator
 }  // namespace bigtable

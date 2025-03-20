@@ -19,18 +19,22 @@
 #include "google/cloud/bigtable/emulator/range_set.h"
 #include "google/cloud/bigtable/internal/google_bytes_traits.h"
 #include "google/cloud/internal/make_status.h"
+#include "google/cloud/status.h"
 #include "google/protobuf/util/field_mask_util.h"
 #include <grpc/grpc_security_constants.h>
 #include <google/bigtable/v2/bigtable.pb.h>
+#include <google/bigtable/admin/v2/types.pb.h>
 #include <google/bigtable/v2/data.pb.h>
 #include <absl/strings/match.h>
 #include <absl/strings/str_format.h>
 #include <absl/types/optional.h>
 #include <re2/re2.h>
 #include <chrono>
+#include <cstdint>
 #include <cstdlib>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <type_traits>
 
 namespace google {
@@ -82,9 +86,18 @@ Status Table::Construct(google::bigtable::admin::v2::Table schema) {
         GCP_ERROR_INFO().WithMetadata("schema", schema_.DebugString()));
   }
   for (auto const& column_family_def : schema_.column_families()) {
+    absl::optional<google::bigtable::admin::v2::Type> opt_value_type =
+        absl::nullopt;
+
+    // Support for complex types (Add_To_Cell aggregations, e.t.c.).
+    if (column_family_def.second.has_value_type()) {
+      opt_value_type = column_family_def.second.value_type();
+    }
+
     column_families_.emplace(column_family_def.first,
-                             std::make_shared<ColumnFamily>());
+                             std::make_shared<ColumnFamily>(opt_value_type));
   }
+
   return Status();
 }
 
@@ -259,9 +272,11 @@ Status Table::DoMutationsWithPossibleRollback(
         return status;
       }
     } else if (mutation.has_add_to_cell()) {
-      return UnimplementedError(
-          "Unsupported mutation type.",
-          GCP_ERROR_INFO().WithMetadata("mutation", mutation.DebugString()));
+      auto const& add_to_cell = mutation.add_to_cell();
+      auto status = row_transaction.AddToCell(add_to_cell);
+      if (!status.ok()) {
+        return status;
+      }
     } else if (mutation.has_merge_to_cell()) {
       return UnimplementedError(
           "Unsupported mutation type.",
@@ -539,9 +554,94 @@ Status Table::DropRowRange(
 // NOLINTBEGIN(readability-convert-member-functions-to-static)
 Status RowTransaction::AddToCell(
     ::google::bigtable::v2::Mutation_AddToCell const& add_to_cell) {
-  return UnimplementedError(
-      "Unsupported mutation type.",
-      GCP_ERROR_INFO().WithMetadata("mutation", add_to_cell.DebugString()));
+  auto status = table_->FindColumnFamily(add_to_cell);
+  if (!status.ok()) {
+    return status.status();
+  }
+
+  auto& cf = status->get();
+  auto cf_value_type = cf.GetValueType();
+  if (!cf_value_type.has_value() ||
+      !cf_value_type.value().has_aggregate_type()) {
+    return Status(
+        StatusCode::kInvalidArgument,
+        absl::StrFormat(
+            "column family %s is not configured to contain aggregation cells "
+            "or aggregation type not properly configured",
+            add_to_cell.family_name()));
+  }
+
+  // Ensure that we support the aggregation that is configured in the
+  // column family.
+  switch (cf_value_type.value().aggregate_type().aggregator_case()) {
+    case google::bigtable::admin::v2::Type::Aggregate::kSum:
+    case google::bigtable::admin::v2::Type::Aggregate::kMin:
+    case google::bigtable::admin::v2::Type::Aggregate::kMax:
+      break;
+    default:
+      return Status(
+          StatusCode::kUnimplemented,
+          absl::StrFormat(
+              "column family %s configured with unimplemented aggregation",
+              add_to_cell.family_name()));
+  }
+
+  if (!add_to_cell.has_input()) {
+    return Status(StatusCode::kInvalidArgument,
+                  absl::StrFormat("input value not set"));
+  }
+
+  switch (add_to_cell.input().kind_case()) {
+    case google::bigtable::v2::Value::kIntValue:
+      if (!add_to_cell.input().has_int_value() ||
+          add_to_cell.input().int_value() < 0) {
+        return Status(
+            StatusCode::kInvalidArgument,
+            absl::StrFormat(
+                "no integer input value or negative integer input value"));
+      }
+      break;
+    default:
+      return Status(
+          StatusCode::kInvalidArgument,
+          absl::StrFormat("only non-negative int64 values are supported"));
+  }
+
+  auto uint64_input = static_cast<uint64_t>(add_to_cell.input().int_value());
+  auto value = Uint64ToBigEndian(uint64_input);
+  auto row_key = request_.row_key();
+  auto ts_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::microseconds(
+          add_to_cell.timestamp().raw_timestamp_micros()));
+  auto column_qualifier = add_to_cell.column_qualifier().raw_value();
+
+  std::string old_value;
+  bool cell_existed = false;
+
+  auto column_family_row_it = cf.find(row_key);
+  if (column_family_row_it != cf.end()) {
+    auto column_it = column_family_row_it->second.find(column_qualifier);
+    if (column_it != column_family_row_it->second.end()) {
+      auto column_row_it = column_it->second.find(ts_ms);
+      if (column_row_it != column_it->second.end()) {
+        cell_existed = true;
+        old_value = column_row_it->second;
+      }
+    }
+  }
+
+  if (!cell_existed) {
+    DeleteValue delete_value = {cf, column_qualifier, ts_ms};
+    undo_.emplace(delete_value);
+
+  } else {
+    RestoreValue restore_value = {cf, column_qualifier, ts_ms, old_value};
+    undo_.emplace(restore_value);
+  }
+
+  cf.SetCell(row_key, column_qualifier, ts_ms, value);
+
+  return Status();
 }
 
 Status RowTransaction::MergeToCell(
