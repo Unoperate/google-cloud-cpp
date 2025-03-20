@@ -22,8 +22,10 @@
 #include "absl/types/optional.h"
 #include <google/bigtable/admin/v2/table.pb.h>
 #include <google/bigtable/v2/data.pb.h>
+#include <google/bigtable/v2/types.pb.h>
 #include <chrono>
 #include <map>
+#include <optional>
 
 namespace google {
 namespace cloud {
@@ -216,8 +218,16 @@ class ColumnFamily {
     rows_.erase(row_it);
   }
 
+  std::optional<google::bigtable::v2::Type> GetValueType() {
+    return value_type_;
+  };
+
  private:
   std::map<std::string, ColumnFamilyRow> rows_;
+
+  // Support for aggregate and other complex types.
+  std::optional<google::bigtable::v2::Type> value_type_;
+  std::function<std::string(std::string&)> UpdateCell_;
 };
 
 /**
