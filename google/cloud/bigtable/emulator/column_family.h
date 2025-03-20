@@ -22,8 +22,11 @@
 #include "absl/types/optional.h"
 #include <google/bigtable/admin/v2/table.pb.h>
 #include <google/bigtable/v2/data.pb.h>
+#include <google/bigtable/v2/types.pb.h>
 #include <chrono>
+#include <cstdint>
 #include <map>
+#include <optional>
 
 namespace google {
 namespace cloud {
@@ -34,6 +37,9 @@ struct Cell {
   std::chrono::milliseconds timestamp;
   std::string value;
 };
+
+uint64_t BigEndianToUint64(std::string const& s);
+std::string Uint64ToBigEndian(uint64_t i);
 
 /**
  * Objects of this class hold contents of a specific column in a specific row.
@@ -196,6 +202,7 @@ class ColumnFamilyRow {
 class ColumnFamily {
  public:
   ColumnFamily() = default;
+  explicit ColumnFamily(absl::optional <google::bigtable::admin::v2::Type> value_type);
   // Disable copying.
   ColumnFamily(ColumnFamily const&) = delete;
   ColumnFamily& operator=(ColumnFamily const&) = delete;
@@ -288,8 +295,53 @@ class ColumnFamily {
     rows_.erase(row_it);
   }
 
+  absl::optional<google::bigtable::admin::v2::Type> GetValueType() {
+    return value_type_;
+  };
+
  private:
   std::map<std::string, ColumnFamilyRow> rows_;
+
+  // Support for aggregate and other complex types.
+  absl::optional<google::bigtable::admin::v2::Type> value_type_ = absl::nullopt;
+
+  static std::string DefaultUpdateCell(std::string const& /*existing_value*/,
+                                       std::string const& new_value) {
+    return new_value;
+  };
+
+  static std::string Sum_UpdateCell_BE_Uint64(std::string const& existing_value,
+                                              std::string const& new_value) {
+    return Uint64ToBigEndian(BigEndianToUint64(existing_value) +
+                             BigEndianToUint64(new_value));
+  };
+
+  static std::string Max_UpdateCell_BE_Uint64(std::string const& existing_value,
+                                              std::string const& new_value) {
+    auto existing_int = BigEndianToUint64(existing_value);
+    auto new_int = BigEndianToUint64(new_value);
+
+    if (existing_int > new_int) {
+      return Uint64ToBigEndian(existing_int);
+    }
+
+    return Uint64ToBigEndian(new_int);
+  };
+
+  static std::string Min_UpdateCell_BE_Uint64(std::string const& existing_value,
+                                              std::string const& new_value) {
+    auto existing_int = BigEndianToUint64(existing_value);
+    auto new_int = BigEndianToUint64(new_value);
+
+    if (existing_int < new_int) {
+      return Uint64ToBigEndian(existing_int);
+    }
+
+    return Uint64ToBigEndian(new_int);
+  };
+
+  std::function<std::string(std::string const&, std::string const&)>
+      UpdateCell_ = DefaultUpdateCell;
 };
 
 /**
