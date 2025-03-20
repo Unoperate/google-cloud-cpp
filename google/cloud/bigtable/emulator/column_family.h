@@ -227,7 +227,8 @@ class ColumnFamily {
 
   // Support for aggregate and other complex types.
   std::optional<google::bigtable::v2::Type> value_type_;
-  std::function<std::string(std::string&)> UpdateCell_;
+  static std::string DefaultUpdateCell(std::string& value);
+  std::function<std::string(std::string&)> UpdateCell_ = DefaultUpdateCell;
 };
 
 /**

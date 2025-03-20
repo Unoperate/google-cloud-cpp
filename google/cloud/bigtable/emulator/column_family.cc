@@ -262,6 +262,9 @@ bool FilteredColumnFamilyStream::PointToFirstCellAfterRowChange() const {
   return false;
 }
 
+std::string ColumnFamily::DefaultUpdateCell(std::string& value) {
+  return value;
+};
 }  // namespace emulator
 }  // namespace bigtable
 }  // namespace cloud
