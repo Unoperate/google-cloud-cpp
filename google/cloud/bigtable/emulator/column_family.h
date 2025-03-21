@@ -231,10 +231,20 @@ class ColumnFamily {
 
   // Support for aggregate and other complex types.
   std::optional<google::bigtable::v2::Type> value_type_;
-  static std::string DefaultUpdateCell(const std::string&  /*existing_value*/, const std::string& new_value) {
+
+  static std::string DefaultUpdateCell(std::string const& /*existing_value*/,
+                                       std::string const& new_value) {
     return new_value;
   };
-  std::function<std::string(const std::string&, const std::string&)> UpdateCell_ = DefaultUpdateCell;
+
+  static std::string Sum_UpdateCell_BE_Uint64(std::string const& existing_value,
+                                              std::string const& new_value) {
+    return Uint64ToBigEndian(BigEndianToUint64(existing_value) +
+                             BigEndianToUint64(new_value));
+  };
+
+  std::function<std::string(std::string const&, std::string const&)>
+      UpdateCell_ = DefaultUpdateCell;
 };
 
 /**
