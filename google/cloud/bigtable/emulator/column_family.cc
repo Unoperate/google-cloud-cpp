@@ -15,7 +15,9 @@
 #include "google/cloud/bigtable/emulator/column_family.h"
 #include <chrono>
 #include <cstdint>
+#include <iterator>
 #include <map>
+#include <string>
 
 namespace google {
 namespace cloud {
@@ -37,6 +39,23 @@ uint64_t BigEndianToUint64(std::string const& s) {
          static_cast<uint64_t>(u_bytes[2]) << 40 |
          static_cast<uint64_t>(u_bytes[1]) << 48 |
          static_cast<uint64_t>(u_bytes[0]) << 56;
+}
+
+std::string Uint64ToBigEndian(uint64_t i) {
+  std::array<uint8_t, 8> u_bytes;
+
+  u_bytes[0] = static_cast<uint8_t>(i >> 56);
+  u_bytes[1] = static_cast<uint8_t>(i >> 48);
+  u_bytes[2] = static_cast<uint8_t>(i >> 40);
+  u_bytes[3] = static_cast<uint8_t>(i >> 32);
+  u_bytes[4] = static_cast<uint8_t>(i >> 24);
+  u_bytes[5] = static_cast<uint8_t>(i >> 16);
+  u_bytes[6] = static_cast<uint8_t>(i >> 8);
+  u_bytes[7] = static_cast<uint8_t>(i);
+
+  std::string ret(std::begin(u_bytes), std::end(u_bytes));
+
+  return ret;
 }
 
 void ColumnRow::SetCell(std::chrono::milliseconds timestamp,

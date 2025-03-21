@@ -44,6 +44,14 @@ std::string DumpColumnRow(ColumnRow const& col_row,
   return ss.str();
 }
 
+TEST(Uint64ToBigEndian, Basic) {
+  std::array<uint8_t, 8> expected_u_bytes = {0, 0, 0, 0, 0, 0, 12, 69};
+  std::string expected_str(std::begin(expected_u_bytes),
+                           std::end(expected_u_bytes));
+
+  ASSERT_EQ(expected_str, Uint64ToBigEndian(3141));
+}
+
 std::string DumpColumnFamilyRow(ColumnFamilyRow const& fam_row,
                                 std::string const& prefix = "") {
   std::stringstream ss;

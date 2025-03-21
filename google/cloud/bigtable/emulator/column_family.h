@@ -38,7 +38,8 @@ struct Cell {
   std::string value;
 };
 
-uint64_t BigEndianToUint64(const std::string& s);
+uint64_t BigEndianToUint64(std::string const& s);
+std::string Uint64ToBigEndian(uint64_t i);
 
 /**
  * Objects of this class hold contents of a specific column in a specific row.
