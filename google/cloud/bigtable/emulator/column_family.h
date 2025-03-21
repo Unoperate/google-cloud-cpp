@@ -243,6 +243,30 @@ class ColumnFamily {
                              BigEndianToUint64(new_value));
   };
 
+  static std::string Max_UpdateCell_BE_Uint64(std::string const& existing_value,
+                                              std::string const& new_value) {
+    auto existing_int = BigEndianToUint64(existing_value);
+    auto new_int = BigEndianToUint64(new_value);
+
+    if (existing_int > new_int) {
+      return Uint64ToBigEndian(existing_int);
+    }
+
+    return Uint64ToBigEndian(new_int);
+  };
+
+  static std::string Min_UpdateCell_BE_Uint64(std::string const& existing_value,
+                                              std::string const& new_value) {
+    auto existing_int = BigEndianToUint64(existing_value);
+    auto new_int = BigEndianToUint64(new_value);
+
+    if (existing_int < new_int) {
+      return Uint64ToBigEndian(existing_int);
+    }
+
+    return Uint64ToBigEndian(new_int);
+  };
+
   std::function<std::string(std::string const&, std::string const&)>
       UpdateCell_ = DefaultUpdateCell;
 };
