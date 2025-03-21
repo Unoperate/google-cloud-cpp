@@ -18,12 +18,21 @@
 #include "google/cloud/testing_util/is_proto_equal.h"
 #include <google/protobuf/text_format.h>
 #include <gmock/gmock.h>
+#include <array>
+#include <cstdint>
 
 namespace google {
 namespace cloud {
 namespace bigtable {
 namespace emulator {
 namespace {
+
+TEST(BigEndianToUint64, Basic) {
+  std::array<uint8_t, 8> u_bytes = {1, 2, 3, 4, 5, 6, 7, 8};
+  std::string str(std::begin(u_bytes), std::end(u_bytes));
+
+  ASSERT_EQ(72623859790382856, BigEndianToUint64(str));
+}
 
 std::string DumpColumnRow(ColumnRow const& col_row,
                           std::string const& prefix = "") {

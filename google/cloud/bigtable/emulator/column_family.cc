@@ -14,12 +14,30 @@
 
 #include "google/cloud/bigtable/emulator/column_family.h"
 #include <chrono>
+#include <cstdint>
 #include <map>
 
 namespace google {
 namespace cloud {
 namespace bigtable {
 namespace emulator {
+
+uint64_t BigEndianToUint64(std::string const& s) {
+  if (s.length() != 8) {
+    std::abort();  // We expect to be called with a  8 byte string in big-endian
+                   // encoding only.
+  }
+  auto const* u_bytes = reinterpret_cast<uint8_t const*>(s.c_str());
+
+  return static_cast<uint64_t>(u_bytes[7]) |
+         static_cast<uint64_t>(u_bytes[6]) << 8 |
+         static_cast<uint64_t>(u_bytes[5]) << 16 |
+         static_cast<uint64_t>(u_bytes[4]) << 24 |
+         static_cast<uint64_t>(u_bytes[3]) << 32 |
+         static_cast<uint64_t>(u_bytes[2]) << 40 |
+         static_cast<uint64_t>(u_bytes[1]) << 48 |
+         static_cast<uint64_t>(u_bytes[0]) << 56;
+}
 
 void ColumnRow::SetCell(std::chrono::milliseconds timestamp,
                         std::string const& value) {

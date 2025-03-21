@@ -24,6 +24,7 @@
 #include <google/bigtable/v2/data.pb.h>
 #include <google/bigtable/v2/types.pb.h>
 #include <chrono>
+#include <cstdint>
 #include <map>
 #include <optional>
 
@@ -36,6 +37,8 @@ struct Cell {
   std::chrono::milliseconds timestamp;
   std::string value;
 };
+
+uint64_t BigEndianToUint64(const std::string& s);
 
 /**
  * Objects of this class hold contents of a specific column in a specific row.
