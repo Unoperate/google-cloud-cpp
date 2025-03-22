@@ -165,6 +165,7 @@ class ColumnFamilyRow {
 class ColumnFamily {
  public:
   ColumnFamily() = default;
+  explicit ColumnFamily(std::optional <google::bigtable::v2::Type> value_type);
   // Disable copying.
   ColumnFamily(ColumnFamily const&) = delete;
   ColumnFamily& operator=(ColumnFamily const&) = delete;

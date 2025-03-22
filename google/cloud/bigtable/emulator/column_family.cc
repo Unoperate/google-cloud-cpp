@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #include "google/cloud/bigtable/emulator/column_family.h"
+#include <google/bigtable/v2/types.pb.h>
 #include <chrono>
 #include <cstdint>
 #include <iterator>
 #include <map>
 #include <string>
+#include <utility>
 
 namespace google {
 namespace cloud {
@@ -298,6 +300,38 @@ bool FilteredColumnFamilyStream::PointToFirstCellAfterRowChange() const {
   }
   return false;
 }
+
+ColumnFamily::ColumnFamily(
+    std::optional<google::bigtable::v2::Type> value_type) {
+  value_type_ = std::move(value_type);
+
+  if (!value_type_.has_value()) {
+    return;
+  }
+
+  // FIXME: We currently only support big-endian uint64
+  // encoding. Check that the intent matches that as well (big-endian
+  // encoding in so-called ordered mode that supports only
+  // non-negative integers). However, the mutation code such as the one
+  // for AddCell will check this as well and reject mutations with
+  // encoding we don't support or negative numbers.
+  if (value_type_.value().has_aggregate_type()) {
+    auto aggregate_type = value_type_.value().aggregate_type();
+    switch (aggregate_type.aggregator_case()) {
+      case google::bigtable::v2::Type::Aggregate::kSum:
+        UpdateCell_ = Sum_UpdateCell_BE_Uint64;
+        break;
+      case google::bigtable::v2::Type::Aggregate::kMin:
+        UpdateCell_ = Min_UpdateCell_BE_Uint64;
+        break;
+      case google::bigtable::v2::Type::Aggregate::kMax:
+        UpdateCell_ = Max_UpdateCell_BE_Uint64;
+        break;
+      default:
+        break;
+    }
+  }
+};
 
 }  // namespace emulator
 }  // namespace bigtable
