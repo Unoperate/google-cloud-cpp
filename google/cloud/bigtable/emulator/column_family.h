@@ -231,7 +231,7 @@ class ColumnFamily {
   std::map<std::string, ColumnFamilyRow> rows_;
 
   // Support for aggregate and other complex types.
-  std::optional<google::bigtable::v2::Type> value_type_;
+  std::optional<google::bigtable::v2::Type> value_type_ = std::nullopt;
 
   static std::string DefaultUpdateCell(std::string const& /*existing_value*/,
                                        std::string const& new_value) {
