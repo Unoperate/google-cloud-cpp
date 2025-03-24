@@ -325,7 +325,7 @@ bool FilteredColumnFamilyStream::PointToFirstCellAfterRowChange() const {
 }
 
 ColumnFamily::ColumnFamily(
-    std::optional<google::bigtable::v2::Type> value_type) {
+    std::optional<google::bigtable::admin::v2::Type> value_type) {
   value_type_ = std::move(value_type);
 
   if (!value_type_.has_value()) {
@@ -341,13 +341,13 @@ ColumnFamily::ColumnFamily(
   if (value_type_.value().has_aggregate_type()) {
     auto aggregate_type = value_type_.value().aggregate_type();
     switch (aggregate_type.aggregator_case()) {
-      case google::bigtable::v2::Type::Aggregate::kSum:
+      case google::bigtable::admin::v2::Type::Aggregate::kSum:
         UpdateCell_ = Sum_UpdateCell_BE_Uint64;
         break;
-      case google::bigtable::v2::Type::Aggregate::kMin:
+      case google::bigtable::admin::v2::Type::Aggregate::kMin:
         UpdateCell_ = Min_UpdateCell_BE_Uint64;
         break;
-      case google::bigtable::v2::Type::Aggregate::kMax:
+      case google::bigtable::admin::v2::Type::Aggregate::kMax:
         UpdateCell_ = Max_UpdateCell_BE_Uint64;
         break;
       default:
