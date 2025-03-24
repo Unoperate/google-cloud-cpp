@@ -19,11 +19,13 @@
 #include "google/cloud/bigtable/internal/google_bytes_traits.h"
 #include "google/cloud/internal/make_status.h"
 #include "google/protobuf/util/field_mask_util.h"
+#include <google/bigtable/admin/v2/types.pb.h>
 #include <google/bigtable/v2/data.pb.h>
 #include <absl/strings/str_format.h>
 #include <re2/re2.h>
 #include <chrono>
 #include <cstdlib>
+#include <optional>
 #include <type_traits>
 
 namespace google {
@@ -75,9 +77,18 @@ Status Table::Construct(google::bigtable::admin::v2::Table schema) {
         GCP_ERROR_INFO().WithMetadata("schema", schema_.DebugString()));
   }
   for (auto const& column_family_def : schema_.column_families()) {
+    std::optional<google::bigtable::admin::v2::Type> opt_value_type =
+        std::nullopt;
+
+    // Support for complex types (Add_To_Cell aggregations, e.t.c.).
+    if (column_family_def.second.has_value_type()) {
+      opt_value_type = column_family_def.second.value_type();
+    }
+
     column_families_.emplace(column_family_def.first,
-                             std::make_shared<ColumnFamily>());
+                             std::make_shared<ColumnFamily>(opt_value_type));
   }
+
   return Status();
 }
 
