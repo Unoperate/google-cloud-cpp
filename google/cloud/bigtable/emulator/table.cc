@@ -287,7 +287,6 @@ Status Table::MutateRow(google::bigtable::v2::MutateRowRequest const& request) {
 
   return Status();
 }
-// NOLINTEND(readability-function-cognitive-complexity)
 
 bool FilteredTableStream::ApplyFilter(InternalFilter const& internal_filter) {
   if (!absl::holds_alternative<FamilyNameRegex>(internal_filter)) {
