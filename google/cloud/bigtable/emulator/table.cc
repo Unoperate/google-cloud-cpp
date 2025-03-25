@@ -247,9 +247,11 @@ Status Table::MutateRow(google::bigtable::v2::MutateRowRequest const& request) {
         return status;
       }
     } else if (mutation.has_add_to_cell()) {
-      return UnimplementedError(
-          "Unsupported mutation type.",
-          GCP_ERROR_INFO().WithMetadata("mutation", mutation.DebugString()));
+      auto const& add_to_cell = mutation.add_to_cell();
+      auto status = row_transaction.AddToCell(add_to_cell);
+      if (!status.ok()) {
+        return status;
+      }
     } else if (mutation.has_merge_to_cell()) {
       return UnimplementedError(
           "Unsupported mutation type.",
@@ -464,12 +466,38 @@ Status RowTransaction::AddToCell(
 
   auto uint64_input = static_cast<uint64_t>(add_to_cell.input().int_value());
   auto value = Uint64ToBigEndian(uint64_input);
+  auto row_key = request_.row_key();
+  auto ts_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::microseconds(
+          add_to_cell.timestamp().raw_timestamp_micros()));
+  auto column_qualifier = add_to_cell.column_qualifier().raw_value();
 
-  cf.SetCell(request_.row_key(), add_to_cell.column_qualifier().raw_value(),
-             std::chrono::duration_cast<std::chrono::milliseconds>(
-                 std::chrono::microseconds(
-                     add_to_cell.timestamp().raw_timestamp_micros())),
-             value);
+  std::string old_value;
+  bool cell_existed = false;
+
+  auto column_family_row_it = cf.find(row_key);
+  if (column_family_row_it != cf.end()) {
+    auto column_it = column_family_row_it->second.find(column_qualifier);
+    if (column_it != column_family_row_it->second.end()) {
+      auto column_row_it = column_it->second.find(ts_ms);
+      if (column_row_it != column_it->second.end()) {
+        cell_existed = true;
+        old_value = column_row_it->second;
+      }
+    }
+  }
+
+  if (!cell_existed) {
+    DeleteValue delete_value = {cf, row_key, column_qualifier, ts_ms};
+    undo_.emplace(delete_value);
+
+  } else {
+    RestoreValue restore_value = {cf, row_key, column_qualifier, ts_ms,
+                                  old_value};
+    undo_.emplace(restore_value);
+  }
+
+  cf.SetCell(row_key, column_qualifier, ts_ms, value);
 
   return Status();
 }
