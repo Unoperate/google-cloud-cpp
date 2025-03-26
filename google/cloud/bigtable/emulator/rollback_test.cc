@@ -729,6 +729,46 @@ TEST(TransactonRollback, DeleteFromRowBasicFunction) {
                        .ok());
 }
 
+// Does AddToCell reject requests to add to a cell in a column family
+// not provisioned for aggregation?
+TEST(TransactonRollback, AddToCellRejectsRequestsToNonAggregateColumnFamily) {
+  ::google::bigtable::admin::v2::Table schema;
+  ::google::bigtable::admin::v2::ColumnFamily column_family;
+
+  auto const* const table_name = "projects/test/instances/test/tables/test";
+  auto const* const row_key = "0";
+  auto const* const column_family_name = "column_family_1";
+  auto const* const column_qualifer = "column_qualifier";
+  auto const timestamp_micros = 1000;
+
+  std::vector<std::string> column_families = {column_family_name};
+  auto maybe_table = create_table(table_name, column_families);
+
+  ASSERT_STATUS_OK(maybe_table);
+  auto table = maybe_table.value();
+
+  ::google::bigtable::v2::MutateRowRequest mutation_request;
+  mutation_request.set_table_name(table_name);
+  mutation_request.set_row_key(row_key);
+
+  auto* mutation_request_mutation = mutation_request.add_mutations();
+  auto* add_to_cell_mutation = mutation_request_mutation->mutable_add_to_cell();
+
+  add_to_cell_mutation->set_family_name(column_family_name);
+  auto* mutable_column_qualifer =
+      add_to_cell_mutation->mutable_column_qualifier();
+  mutable_column_qualifer->set_raw_value(column_qualifer);
+  auto* mutable_timestamp = add_to_cell_mutation->mutable_timestamp();
+  mutable_timestamp->set_raw_timestamp_micros(timestamp_micros);
+  auto* mutable_input = add_to_cell_mutation->mutable_input();
+  mutable_input->set_int_value(100);
+
+  // Should fail because `column_family' has not been provisioned for
+  // aggregation. i.e. its value_type is not set all, in this case (it
+  // would need to be set to `Aggregate'.
+  ASSERT_EQ(false, table->MutateRow(mutation_request).ok());
+}
+
 }  // namespace emulator
 }  // namespace bigtable
 }  // namespace cloud

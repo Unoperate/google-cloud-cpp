@@ -457,6 +457,7 @@ Status RowTransaction::AddToCell(
             absl::StrFormat(
                 "no integer input value or negative integer input value"));
       }
+      break;
     default:
       return Status(
           StatusCode::kInvalidArgument,
