@@ -818,7 +818,7 @@ TEST(TransactonRollback, AddToCellRejectsRequestsToNonAggregateColumnFamily) {
   ASSERT_EQ(false, table->MutateRow(mutation_request).ok());
 }
 
-// Test basic functionality of AddToCell
+// Test basic functionality of AddToCell Sum aggregation.
 TEST(TransactonRollback, AddToCellTestSum) {
   auto const* const table_name = "projects/test/instances/test/tables/test";
   auto const* const row_key = "0";
@@ -861,8 +861,97 @@ TEST(TransactonRollback, AddToCellTestSum) {
   ASSERT_EQ(true, has_cell(table, column_family_name, row_key, column_qualifer,
                            timestamp_micros, Uint64ToBigEndian(300))
                       .ok());
-
 }
+
+// Test basic functionality of AddToCell Max aggregation.
+TEST(TransactonRollback, AddToCellTestMax) {
+  auto const* const table_name = "projects/test/instances/test/tables/test";
+  auto const* const row_key = "0";
+  auto const* const column_family_name = "column_family_1";
+  auto const* const column_qualifer = "column_qualifier";
+  auto const timestamp_micros = 1000;
+
+  auto maybe_table = Table::Create(create_schema(
+      table_name, {{column_family_name,
+                    make_BE_aggregate_cf_proto(
+                        google::bigtable::admin::v2::Type::Aggregate::kMax)}}));
+  ASSERT_STATUS_OK(maybe_table);
+
+  auto table = maybe_table.value();
+
+  ::google::bigtable::v2::MutateRowRequest mutation_request;
+  mutation_request.set_table_name(table_name);
+  mutation_request.set_row_key(row_key);
+
+  auto* mutation_request_mutation = mutation_request.add_mutations();
+  auto* add_to_cell_mutation = mutation_request_mutation->mutable_add_to_cell();
+
+  add_to_cell_mutation->set_family_name(column_family_name);
+  auto* mutable_column_qualifer =
+      add_to_cell_mutation->mutable_column_qualifier();
+  mutable_column_qualifer->set_raw_value(column_qualifer);
+  auto* mutable_timestamp = add_to_cell_mutation->mutable_timestamp();
+  mutable_timestamp->set_raw_timestamp_micros(timestamp_micros);
+  auto* mutable_input = add_to_cell_mutation->mutable_input();
+  mutable_input->set_int_value(100);
+
+  ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
+  ASSERT_EQ(true, has_cell(table, column_family_name, row_key, column_qualifer,
+                           timestamp_micros, Uint64ToBigEndian(100))
+                      .ok());
+
+  mutable_input->set_int_value(200);
+  ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
+  ASSERT_EQ(true, has_cell(table, column_family_name, row_key, column_qualifer,
+                           timestamp_micros, Uint64ToBigEndian(200))
+                      .ok());
+}
+
+// Test basic functionality of AddToCell Min aggregation.
+TEST(TransactonRollback, AddToCellTestMin) {
+  auto const* const table_name = "projects/test/instances/test/tables/test";
+  auto const* const row_key = "0";
+  auto const* const column_family_name = "column_family_1";
+  auto const* const column_qualifer = "column_qualifier";
+  auto const timestamp_micros = 1000;
+
+  auto maybe_table = Table::Create(create_schema(
+      table_name, {{column_family_name,
+                    make_BE_aggregate_cf_proto(
+                        google::bigtable::admin::v2::Type::Aggregate::kMin)}}));
+  ASSERT_STATUS_OK(maybe_table);
+
+  auto table = maybe_table.value();
+
+  ::google::bigtable::v2::MutateRowRequest mutation_request;
+  mutation_request.set_table_name(table_name);
+  mutation_request.set_row_key(row_key);
+
+  auto* mutation_request_mutation = mutation_request.add_mutations();
+  auto* add_to_cell_mutation = mutation_request_mutation->mutable_add_to_cell();
+
+  add_to_cell_mutation->set_family_name(column_family_name);
+  auto* mutable_column_qualifer =
+      add_to_cell_mutation->mutable_column_qualifier();
+  mutable_column_qualifer->set_raw_value(column_qualifer);
+  auto* mutable_timestamp = add_to_cell_mutation->mutable_timestamp();
+  mutable_timestamp->set_raw_timestamp_micros(timestamp_micros);
+  auto* mutable_input = add_to_cell_mutation->mutable_input();
+  mutable_input->set_int_value(100);
+
+  ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
+  ASSERT_EQ(true, has_cell(table, column_family_name, row_key, column_qualifer,
+                           timestamp_micros, Uint64ToBigEndian(100))
+                      .ok());
+
+  mutable_input->set_int_value(50);
+  ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
+  ASSERT_EQ(true, has_cell(table, column_family_name, row_key, column_qualifer,
+                           timestamp_micros, Uint64ToBigEndian(50))
+                      .ok());
+}
+
+
 
 }  // namespace emulator
 }  // namespace bigtable
