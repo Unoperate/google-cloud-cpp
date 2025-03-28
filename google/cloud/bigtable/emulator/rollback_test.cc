@@ -21,6 +21,7 @@
 #include <google/bigtable/admin/v2/bigtable_table_admin.grpc.pb.h>
 #include <google/bigtable/admin/v2/bigtable_table_admin.pb.h>
 #include <google/bigtable/admin/v2/table.pb.h>
+#include <google/bigtable/admin/v2/types.pb.h>
 #include <google/bigtable/v2/bigtable.grpc.pb.h>
 #include <google/bigtable/v2/bigtable.pb.h>
 #include <google/bigtable/v2/data.pb.h>
@@ -44,16 +45,56 @@ struct SetCellParams {
   std::string data;
 };
 
-StatusOr<std::shared_ptr<Table>> create_table(
-    std::string const& table_name, std::vector<std::string>& column_families) {
+
+
+::google::bigtable::admin::v2::ColumnFamily make_BE_aggregate_cf_proto(
+     ::google::bigtable::admin::v2::Type_Aggregate::AggregatorCase aggregator) {
+
+  ::google::bigtable::admin::v2::ColumnFamily column_family;
+
+  auto* value_type = column_family.mutable_value_type();
+  auto* kind_aggregate_type = value_type->mutable_aggregate_type();
+  switch (aggregator) {
+    case google::bigtable::admin::v2::Type::Aggregate::kSum:
+      kind_aggregate_type->mutable_sum();
+      break;
+    case google::bigtable::admin::v2::Type::Aggregate::kMax:
+      kind_aggregate_type->mutable_max();
+      break;
+    case google::bigtable::admin::v2::Type::Aggregate::kMin:
+      kind_aggregate_type->mutable_min();
+      break;
+    default:
+      std::abort();
+  }
+  auto* input_type = kind_aggregate_type->mutable_input_type();
+  auto* int64_type = input_type->mutable_int64_type();
+  // We need to set the encoding
+  auto* encoding = int64_type->mutable_encoding();
+  encoding->mutable_big_endian_bytes();
+
+  // What do we do about the state_type?
+  // FIXME: Is this correct?
+  auto *state_type = kind_aggregate_type->mutable_state_type();
+  int64_type = state_type->mutable_int64_type();
+  encoding = int64_type->mutable_encoding();
+  encoding->mutable_big_endian_bytes();
+
+  return column_family;
+}
+
+::google::bigtable::admin::v2::Table create_schema(
+    std::string const& table_name,
+    std::map<std::string, ::google::bigtable::admin::v2::ColumnFamily> const&
+        column_families) {
   ::google::bigtable::admin::v2::Table schema;
+
   schema.set_name(table_name);
-  for (auto& column_family_name : column_families) {
-    (*schema.mutable_column_families())[column_family_name] =
-        ::google::bigtable::admin::v2::ColumnFamily();
+  for (auto& cf : column_families) {
+    (*schema.mutable_column_families())[cf.first] = cf.second;
   }
 
-  return Table::Create(schema);
+  return schema;
 }
 
 Status delete_from_families(
@@ -237,8 +278,8 @@ TEST(TransactonRollback, SetCellBasicFunction) {
   auto const timestamp_micros = 1234;
   auto const* data = "test";
 
-  std::vector<std::string> column_families = {column_family_name};
-  auto maybe_table = create_table(table_name, column_families);
+  auto maybe_table = Table::Create(
+      create_schema(table_name, {{column_family_name, column_family}}));
 
   ASSERT_STATUS_OK(maybe_table);
   auto table = maybe_table.value();
@@ -275,8 +316,8 @@ TEST(TransactonRollback, TestRestoreValue) {
   int64_t good_mutation_timestamp_micros = 1000;
   auto const* const good_mutation_data = "expected to succeed";
 
-  std::vector<std::string> column_families = {valid_column_family_name};
-  auto maybe_table = create_table(table_name, column_families);
+  auto maybe_table = Table::Create(
+      create_schema(table_name, {{valid_column_family_name, column_family}}));
   ASSERT_STATUS_OK(maybe_table);
   auto table = maybe_table.value();
 
@@ -334,8 +375,8 @@ TEST(TransactonRollback, DeleteValue) {
   // failure by setting some other not-pre-provisioned column family
   // name.
   auto const* const valid_column_family_name = "test";
-  std::vector<std::string> column_families = {valid_column_family_name};
-  auto maybe_table = create_table(table_name, column_families);
+  auto maybe_table = Table::Create(
+      create_schema(table_name, {{valid_column_family_name, column_family}}));
   ASSERT_STATUS_OK(maybe_table);
   auto table = maybe_table.value();
 
@@ -390,7 +431,8 @@ TEST(TransactonRollback, DeleteColumn) {
   // name.
   auto const* const valid_column_family_name = "test";
   std::vector<std::string> column_families = {valid_column_family_name};
-  auto maybe_table = create_table(table_name, column_families);
+  auto maybe_table = Table::Create(
+      create_schema(table_name, {{valid_column_family_name, column_family}}));
   ASSERT_STATUS_OK(maybe_table);
   auto table = maybe_table.value();
 
@@ -438,8 +480,8 @@ TEST(TransactonRollback, DeleteRow) {
   // failure by setting some other not-pre-provisioned column family
   // name.
   auto const* const valid_column_family_name = "test";
-  std::vector<std::string> column_families = {valid_column_family_name};
-  auto maybe_table = create_table(table_name, column_families);
+  auto maybe_table = Table::Create(
+      create_schema(table_name, {{valid_column_family_name, column_family}}));
   ASSERT_STATUS_OK(maybe_table);
   auto table = maybe_table.value();
 
@@ -476,8 +518,11 @@ TEST(TransactonRollback, DeleteFromFamilyBasicFunction) {
 
   auto const* const second_column_family_name = "test2";
 
-  std::vector<std::string> column_families = {column_family_name, second_column_family_name};
-  auto maybe_table = create_table(table_name, column_families);
+  auto maybe_table = Table::Create(create_schema(
+      table_name,
+      {{column_family_name, ::google::bigtable::admin::v2::ColumnFamily()},
+       {second_column_family_name,
+        ::google::bigtable::admin::v2::ColumnFamily()}}));
 
   ASSERT_STATUS_OK(maybe_table);
   auto table = maybe_table.value();
@@ -529,8 +574,8 @@ TEST(TransactonRollback, DeleteFromFamilyRollback) {
   auto const* const column_family_not_in_schema =
       "i_do_not_exist_in_the_schema";
 
-  std::vector<std::string> column_families = {column_family_name};
-  auto maybe_table = create_table(table_name, column_families);
+  auto maybe_table = Table::Create(
+      create_schema(table_name, {{column_family_name, column_family}}));
 
   ASSERT_STATUS_OK(maybe_table);
   auto table = maybe_table.value();
@@ -587,8 +632,8 @@ TEST(TransactonRollback, DeleteFromColumnBasicFunction) {
   auto const* const column_qualifer = "test";
   auto const* data = "test";
 
-  std::vector<std::string> column_families = {column_family_name};
-  auto maybe_table = create_table(table_name, column_families);
+  auto maybe_table = Table::Create(
+      create_schema(table_name, {{column_family_name, column_family}}));
 
   ASSERT_STATUS_OK(maybe_table);
   auto table = maybe_table.value();
@@ -633,8 +678,8 @@ TEST(TransactonRollback, DeleteFromColumnRollback) {
   auto const* const bad_column_family_name = "this_column_family_does_not_exist";
   auto const* data = "test";
 
-  std::vector<std::string> column_families = {column_family_name};
-  auto maybe_table = create_table(table_name, column_families);
+  auto maybe_table = Table::Create(
+      create_schema(table_name, {{column_family_name, column_family}}));
 
   ASSERT_STATUS_OK(maybe_table);
   auto table = maybe_table.value();
@@ -692,7 +737,11 @@ TEST(TransactonRollback, DeleteFromRowBasicFunction) {
 
   std::vector<std::string> column_families = {column_family_name,
                                               second_column_family_name};
-  auto maybe_table = create_table(table_name, column_families);
+  auto maybe_table = Table::Create(create_schema(
+      table_name,
+      {{column_family_name, ::google::bigtable::admin::v2::ColumnFamily()},
+       {second_column_family_name,
+        ::google::bigtable::admin::v2::ColumnFamily()}}));
 
   ASSERT_STATUS_OK(maybe_table);
   auto table = maybe_table.value();
@@ -741,8 +790,8 @@ TEST(TransactonRollback, AddToCellRejectsRequestsToNonAggregateColumnFamily) {
   auto const* const column_qualifer = "column_qualifier";
   auto const timestamp_micros = 1000;
 
-  std::vector<std::string> column_families = {column_family_name};
-  auto maybe_table = create_table(table_name, column_families);
+  auto maybe_table = Table::Create(
+      create_schema(table_name, {{column_family_name, column_family}}));
 
   ASSERT_STATUS_OK(maybe_table);
   auto table = maybe_table.value();
@@ -767,6 +816,21 @@ TEST(TransactonRollback, AddToCellRejectsRequestsToNonAggregateColumnFamily) {
   // aggregation. i.e. its value_type is not set all, in this case (it
   // would need to be set to `Aggregate'.
   ASSERT_EQ(false, table->MutateRow(mutation_request).ok());
+}
+
+// Test basic functionality of AddToCell
+TEST(TransactonRollback, AddToCellTestSum) {
+  auto const* const table_name = "projects/test/instances/test/tables/test";
+  auto const* const row_key = "0";
+  auto const* const column_family_name = "column_family_1";
+  auto const* const column_qualifer = "column_qualifier";
+  auto const timestamp_micros = 1000;
+
+  auto maybe_table = Table::Create(create_schema(
+      table_name, {{column_family_name,
+                    make_BE_aggregate_cf_proto(
+                        google::bigtable::admin::v2::Type::Aggregate::kSum)}}));
+  ASSERT_STATUS_OK(maybe_table);
 }
 
 }  // namespace emulator
