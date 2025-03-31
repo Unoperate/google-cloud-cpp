@@ -131,8 +131,6 @@ std::map<std::string, std::vector<Cell>> ColumnFamily::DeleteRow(
     }
   }
 
-  rows_.erase(row_key);
-
   return res;
 }
 
