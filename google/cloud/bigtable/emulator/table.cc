@@ -512,23 +512,23 @@ Status RowTransaction::MergeToCell(
 Status RowTransaction::DeleteFromColumn(
     ::google::bigtable::v2::Mutation_DeleteFromColumn const&
         delete_from_column) {
-  auto status = table_->FindColumnFamily(delete_from_column);
-  if (!status.ok()) {
-    return status.status();
+  auto maybe_column_family = table_->FindColumnFamily(delete_from_column);
+  if (!maybe_column_family.ok()) {
+    return maybe_column_family.status();
   }
 
-  auto& column_family = status->get();
+  auto& column_family = maybe_column_family->get();
 
   auto deleted_cells = column_family.DeleteColumn(
       request_.row_key(), delete_from_column.column_qualifier(),
       delete_from_column.time_range());
 
-  for (auto cell : deleted_cells) {
-    RestoreValue restore_value = {column_family, request_.row_key(),
-                                  delete_from_column.column_qualifier(),
-                                  std::move(cell.timestamp),
-                                  std::move(cell.value)};
-    undo_.emplace(restore_value);
+  for (auto& cell : deleted_cells) {
+    RestoreValue restore_value{column_family,
+                               delete_from_column.column_qualifier(),
+                               std::move(cell.timestamp),
+                               std::move(cell.value)};
+    undo_.emplace(std::move(restore_value));
   }
 
   return Status();
@@ -542,9 +542,9 @@ Status RowTransaction::DeleteFromRow() {
     for (auto& column : deleted_columns) {
       for (auto& cell : column.second) {
         RestoreValue restrore_value = {
-            *column_family.second, request_.row_key(), std::move(column.first),
+            *column_family.second, std::move(column.first),
             cell.timestamp, std::move(cell.value)};
-        undo_.emplace(restrore_value);
+        undo_.emplace(std::move(restrore_value));
         row_existed = true;
       }
     }
@@ -554,10 +554,9 @@ Status RowTransaction::DeleteFromRow() {
     return Status();
   }
 
-  return Status(
-      StatusCode::kNotFound,
-      absl::StrFormat("row %s not found in table", request_.row_key()),
-      ErrorInfo());
+  return NotFoundError(
+      "row not found in table",
+      GCP_ERROR_INFO().WithMetadata("row", request_.row_key()));
 }
 
 Status RowTransaction::DeleteFromFamily(
@@ -565,36 +564,37 @@ Status RowTransaction::DeleteFromFamily(
         delete_from_family) {
   // If the request references an incorrect schema (non-existent
   // column family) then return a failure status error immediately.
-  auto status = table_->FindColumnFamily(delete_from_family);
-  if (!status.ok()) {
-    return status.status();
+  auto maybe_column_family = table_->FindColumnFamily(delete_from_family);
+  if (!maybe_column_family.ok()) {
+    return maybe_column_family.status();
   }
 
   auto column_family_it = table_->find(delete_from_family.family_name());
   if (column_family_it == table_->end()) {
-    return Status(StatusCode::kNotFound,
-                  absl::StrFormat("column family %s not found in table",
-                                  delete_from_family.family_name()),
-                  ErrorInfo());
+    return NotFoundError(
+        "column family not found in table",
+        GCP_ERROR_INFO().WithMetadata("column family",
+                                      delete_from_family.family_name()));
   }
 
   std::map<std::string, ColumnFamilyRow>::iterator column_family_row_it;
   if (column_family_row_it = column_family_it->second->find(request_.row_key());
       column_family_row_it == column_family_it->second->end()) {
     // The row does not exist
-    return Status(StatusCode::kNotFound,
-                  absl::StrFormat("row key %s not found in column family %s",
-                                  request_.row_key(), column_family_it->first),
-                  ErrorInfo());
+    return NotFoundError(
+        "row key is not found in column family",
+        GCP_ERROR_INFO()
+            .WithMetadata("row key", request_.row_key())
+            .WithMetadata("column family", column_family_it->first));
   }
 
   auto deleted = column_family_it->second->DeleteRow(request_.row_key());
   for (auto const& column : deleted) {
     for (auto const& cell : column.second) {
-      RestoreValue restore_value = {*column_family_it->second,
-                                    request_.row_key(), std::move(column.first),
-                                    cell.timestamp, std::move(cell.value)};
-      undo_.emplace(restore_value);
+      RestoreValue restore_value{*column_family_it->second,
+                                 std::move(column.first), cell.timestamp,
+                                 std::move(cell.value)};
+      undo_.emplace(std::move(restore_value));
     }
   }
 
@@ -649,22 +649,24 @@ Status RowTransaction::SetCell(
           std::chrono::microseconds(set_cell.timestamp_micros())));
 
   if (!cell_existed) {
-    DeleteValue delete_value = {column_family, column_family_row_it->first,
-                                std::move(set_cell.column_qualifier()),
-                                timestamp_it->first};
-    undo_.emplace(delete_value);
+    DeleteValue delete_value{column_family,
+                             std::move(set_cell.column_qualifier()),
+                             timestamp_it->first};
+    undo_.emplace(std::move(delete_value));
   } else {
-    RestoreValue restore_value = {column_family, column_family_row_it->first,
-                                  std::move(set_cell.column_qualifier()),
-                                  timestamp_it->first,
-                                  std::move(value_to_restore)};
-    undo_.emplace(restore_value);
+    RestoreValue restore_value{column_family,
+                               std::move(set_cell.column_qualifier()),
+                               timestamp_it->first,
+                               std::move(value_to_restore)};
+    undo_.emplace(std::move(restore_value));
   }
 
   return Status();
 }
 
 void RowTransaction::Undo() {
+  auto row_key = request_.row_key();
+
   while (!undo_.empty()) {
     auto op = undo_.top();
     undo_.pop();
@@ -672,25 +674,30 @@ void RowTransaction::Undo() {
     auto* restore_value = absl::get_if<RestoreValue>(&op);
     if (restore_value) {
       restore_value->column_family.SetCell(
-          std::move(restore_value->row_key),
+          row_key,
           std::move(restore_value->column_qualifier), restore_value->timestamp,
           std::move(restore_value->value));
       continue;
     }
 
+
     auto* delete_value = absl::get_if<DeleteValue>(&op);
     if (delete_value) {
       ::google::bigtable::v2::TimestampRange range;
-      auto start_micros = delete_value->timestamp.count() * 1000;
+      auto start_micros = std::chrono::duration_cast<std::chrono::microseconds>(
+          std::chrono::milliseconds(delete_value->timestamp.count()));
       // The following is an exclusive upper bound, 1ms higher Since
       // timestamps have millisecond resolution, 2 timestamps have to
       // be at least 1ms apart which means that setting this as the
       // end of the range guarantees that we delete at most 1 (because
       // the upper bound is exclusive).
-      auto end_micros = start_micros + 1000;
-      range.set_start_timestamp_micros(start_micros);
-      range.set_end_timestamp_micros(end_micros);
-      delete_value->column_family.DeleteColumn(delete_value->row_key, std::move(delete_value->column_qualifier), range);
+      auto end_micros = std::chrono::duration_cast<std::chrono::microseconds>(
+          std::chrono::milliseconds(delete_value->timestamp.count() + 1000));
+      range.set_start_timestamp_micros(start_micros.count());
+      range.set_end_timestamp_micros(end_micros.count());
+      delete_value->column_family.DeleteColumn(
+          row_key, std::move(delete_value->column_qualifier),
+          range);
       continue;
     }
 
