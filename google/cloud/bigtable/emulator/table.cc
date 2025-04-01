@@ -488,12 +488,11 @@ Status RowTransaction::AddToCell(
   }
 
   if (!cell_existed) {
-    DeleteValue delete_value = {cf, row_key, column_qualifier, ts_ms};
+    DeleteValue delete_value = {cf, column_qualifier, ts_ms};
     undo_.emplace(delete_value);
 
   } else {
-    RestoreValue restore_value = {cf, row_key, column_qualifier, ts_ms,
-                                  old_value};
+    RestoreValue restore_value = {cf, column_qualifier, ts_ms, old_value};
     undo_.emplace(restore_value);
   }
 
