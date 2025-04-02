@@ -165,7 +165,7 @@ class ColumnFamilyRow {
 class ColumnFamily {
  public:
   ColumnFamily() = default;
-  explicit ColumnFamily(std::optional <google::bigtable::admin::v2::Type> value_type);
+  explicit ColumnFamily(absl::optional <google::bigtable::admin::v2::Type> value_type);
   // Disable copying.
   ColumnFamily(ColumnFamily const&) = delete;
   ColumnFamily& operator=(ColumnFamily const&) = delete;
@@ -230,7 +230,7 @@ class ColumnFamily {
     rows_.erase(row_it);
   }
 
-  std::optional<google::bigtable::admin::v2::Type> GetValueType() {
+  absl::optional<google::bigtable::admin::v2::Type> GetValueType() {
     return value_type_;
   };
 
@@ -238,7 +238,7 @@ class ColumnFamily {
   std::map<std::string, ColumnFamilyRow> rows_;
 
   // Support for aggregate and other complex types.
-  std::optional<google::bigtable::admin::v2::Type> value_type_ = std::nullopt;
+  absl::optional<google::bigtable::admin::v2::Type> value_type_ = absl::nullopt;
 
   static std::string DefaultUpdateCell(std::string const& /*existing_value*/,
                                        std::string const& new_value) {

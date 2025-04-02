@@ -79,8 +79,8 @@ Status Table::Construct(google::bigtable::admin::v2::Table schema) {
         GCP_ERROR_INFO().WithMetadata("schema", schema_.DebugString()));
   }
   for (auto const& column_family_def : schema_.column_families()) {
-    std::optional<google::bigtable::admin::v2::Type> opt_value_type =
-        std::nullopt;
+    absl::optional<google::bigtable::admin::v2::Type> opt_value_type =
+        absl::nullopt;
 
     // Support for complex types (Add_To_Cell aggregations, e.t.c.).
     if (column_family_def.second.has_value_type()) {
@@ -577,8 +577,8 @@ Status RowTransaction::DeleteFromFamily(
   }
 
   std::map<std::string, ColumnFamilyRow>::iterator column_family_row_it;
-  if (column_family_row_it = column_family_it->second->find(request_.row_key());
-      column_family_row_it == column_family_it->second->end()) {
+  if (column_family_it->second->find(request_.row_key()) ==
+      column_family_it->second->end()) {
     // The row does not exist
     return NotFoundError(
         "row key is not found in column family",

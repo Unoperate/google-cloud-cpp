@@ -14,6 +14,7 @@
 
 #include "google/cloud/bigtable/emulator/column_family.h"
 #include <google/bigtable/v2/types.pb.h>
+#include <array>
 #include <chrono>
 #include <cstdint>
 #include <iterator>
@@ -316,7 +317,7 @@ bool FilteredColumnFamilyStream::PointToFirstCellAfterRowChange() const {
 }
 
 ColumnFamily::ColumnFamily(
-    std::optional<google::bigtable::admin::v2::Type> value_type) {
+    absl::optional<google::bigtable::admin::v2::Type> value_type) {
   value_type_ = std::move(value_type);
 
   if (!value_type_.has_value()) {
