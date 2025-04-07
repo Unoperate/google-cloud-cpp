@@ -362,7 +362,7 @@ Table::CheckAndMutateRow(
   }
   auto range_set = std::make_shared<StringRangeSet>(*std::move(maybe_row_set));
 
-  std::lock_guard<std::mutex> lock(mu_);
+  mu_.lock();
 
   auto table_stream_ctor = [range_set = std::move(range_set), this] {
     std::vector<std::unique_ptr<FilteredColumnFamilyStream>> per_cf_streams;
@@ -404,6 +404,8 @@ Table::CheckAndMutateRow(
     mutate_row_request.mutable_mutations()->Assign(
         request.false_mutations().begin(), request.false_mutations().end());
   }
+
+  mu_.unlock();
 
   auto status = MutateRow(mutate_row_request);
   if (!status.ok()) {
