@@ -54,6 +54,8 @@ class Table : public std::enable_shared_from_this<Table> {
 
   bool IsDeleteProtected() const;
 
+  StatusOr<google::bigtable::v2::CheckAndMutateRowResponse> CheckAndMutateRow(
+      google::bigtable::v2::CheckAndMutateRowRequest const& request);
   Status MutateRow(google::bigtable::v2::MutateRowRequest const& request);
 
   Status ReadRows(google::bigtable::v2::ReadRowsRequest const& request,

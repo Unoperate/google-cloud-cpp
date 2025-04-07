@@ -16,14 +16,18 @@
 #include "google/cloud/bigtable/emulator/column_family.h"
 #include "google/cloud/bigtable/emulator/filter.h"
 #include "google/cloud/bigtable/emulator/filtered_map.h"
+#include "google/cloud/bigtable/emulator/range_set.h"
 #include "google/cloud/bigtable/internal/google_bytes_traits.h"
 #include "google/cloud/internal/make_status.h"
 #include "google/protobuf/util/field_mask_util.h"
+#include <google/bigtable/v2/bigtable.pb.h>
 #include <google/bigtable/v2/data.pb.h>
 #include <absl/strings/str_format.h>
 #include <re2/re2.h>
 #include <chrono>
 #include <cstdlib>
+#include <memory>
+#include <mutex>
 #include <type_traits>
 
 namespace google {
@@ -328,6 +332,88 @@ StatusOr<StringRangeSet> CreateStringRangeSet(
     res.Sum(*std::move(maybe_range));
   }
   return res;
+}
+
+StatusOr<google::bigtable::v2::CheckAndMutateRowResponse>
+Table::CheckAndMutateRow(
+    google::bigtable::v2::CheckAndMutateRowRequest const& request) {
+  auto const& row_key = request.row_key();
+  if (row_key.empty()) {
+    return InvalidArgumentError(
+        "row key required",
+        GCP_ERROR_INFO().WithMetadata("CheckAndMutateRowRequest",
+                                      request.DebugString()));
+  }
+
+  if (request.true_mutations_size() == 0 &&
+      request.false_mutations_size() == 0) {
+    return InvalidArgumentError(
+        "both true mutations and false mutations are empty",
+        GCP_ERROR_INFO().WithMetadata("CheckAndMutateRowRequest",
+                                      request.DebugString()));
+  }
+
+  google::bigtable::v2::RowSet row_set;
+  row_set.add_row_keys(row_key);
+
+  auto maybe_row_set = CreateStringRangeSet(row_set);
+  if (!maybe_row_set) {
+    return maybe_row_set.status();
+  }
+  auto range_set = std::make_shared<StringRangeSet>(*std::move(maybe_row_set));
+
+  std::lock_guard<std::mutex> lock(mu_);
+
+  auto table_stream_ctor = [range_set = std::move(range_set), this] {
+    std::vector<std::unique_ptr<FilteredColumnFamilyStream>> per_cf_streams;
+    per_cf_streams.reserve(column_families_.size());
+    for (auto const& column_family : column_families_) {
+      per_cf_streams.emplace_back(std::make_unique<FilteredColumnFamilyStream>(
+          *column_family.second, column_family.first, range_set));
+    }
+    return CellStream(
+        std::make_unique<FilteredTableStream>(std::move(per_cf_streams)));
+  };
+
+  StatusOr<CellStream> maybe_stream;
+  if (request.has_predicate_filter()) {
+    maybe_stream = CreateFilter(request.predicate_filter(), table_stream_ctor);
+  } else {
+    maybe_stream = table_stream_ctor();
+  }
+
+  if (!maybe_stream) {
+    return maybe_stream.status();
+  }
+
+  bool a_cell_is_found = false;
+
+  CellStream& stream = *maybe_stream;
+  if (stream) {  // At least one cell/value found when filter is applied
+    a_cell_is_found = true;
+  }
+
+  google::bigtable::v2::MutateRowRequest mutate_row_request;
+  mutate_row_request.set_row_key(row_key);
+  mutate_row_request.set_table_name(request.table_name());
+
+  if (a_cell_is_found) {
+    mutate_row_request.mutable_mutations()->Assign(
+        request.true_mutations().begin(), request.true_mutations().end());
+  } else {
+    mutate_row_request.mutable_mutations()->Assign(
+        request.false_mutations().begin(), request.false_mutations().end());
+  }
+
+  auto status = MutateRow(mutate_row_request);
+  if (!status.ok()) {
+    return status;
+  }
+
+  google::bigtable::v2::CheckAndMutateRowResponse success_response;
+  success_response.set_predicate_matched(a_cell_is_found);
+
+  return success_response;
 }
 
 Status Table::ReadRows(google::bigtable::v2::ReadRowsRequest const& request,
