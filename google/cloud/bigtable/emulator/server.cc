@@ -81,12 +81,13 @@ class EmulatorService final : public btproto::Bigtable::Service {
       return ToGrpcStatus(maybe_table.status());
     }
 
-    auto maybe_response = (*maybe_table)->CheckAndMutateRow(*request);
-    if (!maybe_response.ok()) {
-      return ToGrpcStatus(maybe_response.status());
+    auto status_or = (*maybe_table)->CheckAndMutateRow(*request);
+    if (!status_or.ok()) {
+      return ToGrpcStatus(status_or.status());
     }
 
-    *response = std::move(maybe_response.value());
+    auto res = status_or.value();
+    response->CopyFrom(res);
 
     return grpc::Status::OK;
   }

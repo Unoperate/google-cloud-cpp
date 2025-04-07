@@ -229,6 +229,12 @@ Status Table::MutateRow(google::bigtable::v2::MutateRowRequest const& request) {
   return MutateRowUnlocked(request);
 }
 
+Status Table::MutateRowUnlocked(google::bigtable::v2::MutateRowRequest const& request) {
+  assert(request.table_name() == schema_.name());
+
+  return MutateRowUnlocked(request);
+}
+
 Status Table::DoMutationsWithPossibleRollback(
     std::string const& row_key,
     google::protobuf::RepeatedPtrField<google::bigtable::v2::Mutation> const&
@@ -295,13 +301,6 @@ Status Table::DoMutationsWithPossibleRollback(
   return Status();
 }
 
-Status Table::MutateRowUnlocked(
-    google::bigtable::v2::MutateRowRequest const& request) {
-  assert(request.table_name() == schema_.name());
-
-  return DoMutationsWithPossibleRollback(request.row_key(),
-                                         request.mutations());
-}
 
 // NOLINTEND(readability-function-cognitive-complexity)
 
@@ -405,15 +404,32 @@ Table::CheckAndMutateRow(
                                       request.DebugString()));
   }
 
-  auto range_set = std::make_shared<StringRangeSet>();
-  range_set->Sum(StringRangeSet::Range(row_key, false, row_key, false));
+  google::bigtable::v2::RowSet row_set;
+  row_set.add_row_keys(row_key);
+
+  auto maybe_row_set = CreateStringRangeSet(row_set);
+  if (!maybe_row_set) {
+    return maybe_row_set.status();
+  }
+  auto range_set = std::make_shared<StringRangeSet>(*std::move(maybe_row_set));
+
+
+  auto table_stream_ctor = [range_set = std::move(range_set), this] {
+    std::vector<std::unique_ptr<FilteredColumnFamilyStream>> per_cf_streams;
+    per_cf_streams.reserve(column_families_.size());
+    for (auto const& column_family : column_families_) {
+      per_cf_streams.emplace_back(std::make_unique<FilteredColumnFamilyStream>(
+          *column_family.second, column_family.first, range_set));
+    }
+    return CellStream(
+        std::make_unique<FilteredTableStream>(std::move(per_cf_streams)));
+  };
 
   StatusOr<CellStream> maybe_stream;
   if (request.has_predicate_filter()) {
-    maybe_stream =
-        CreateCellStream(range_set, std::move(request.predicate_filter()));
+    maybe_stream = CreateFilter(request.predicate_filter(), table_stream_ctor);
   } else {
-    maybe_stream = CreateCellStream(range_set, absl::nullopt);
+    maybe_stream = table_stream_ctor();
   }
 
   if (!maybe_stream) {
@@ -427,15 +443,21 @@ Table::CheckAndMutateRow(
     a_cell_is_found = true;
   }
 
-  Status status;
+  google::bigtable::v2::MutateRowRequest mutate_row_request;
+  mutate_row_request.set_row_key(row_key);
+  mutate_row_request.set_table_name(request.table_name());
+
   if (a_cell_is_found) {
-    status = DoMutationsWithPossibleRollback(request.row_key(),
-                                             request.true_mutations());
+    mutate_row_request.mutable_mutations()->Assign(
+        request.true_mutations().begin(), request.true_mutations().end());
   } else {
-    status = DoMutationsWithPossibleRollback(request.row_key(),
-                                             request.false_mutations());
+    mutate_row_request.mutable_mutations()->Assign(
+        request.false_mutations().begin(), request.false_mutations().end());
   }
 
+  // Since we are already holding the table lock, we can (and must)
+  // call the unlocked version of MutateRow.
+  auto status = MutateRowUnlocked(mutate_row_request);
   if (!status.ok()) {
     return status;
   }
