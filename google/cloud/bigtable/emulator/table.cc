@@ -224,6 +224,11 @@ StatusOr<std::reference_wrapper<ColumnFamily>> Table::FindColumnFamily(
 
 Status Table::MutateRow(google::bigtable::v2::MutateRowRequest const& request) {
   std::lock_guard<std::mutex> lock(mu_);
+
+  return MutateRowUnlocked(request);
+}
+
+Status Table::MutateRowUnlocked(google::bigtable::v2::MutateRowRequest const& request) {
   assert(request.table_name() == schema_.name());
 
   RowTransaction row_transaction(this->get(), request);
@@ -274,6 +279,8 @@ Status Table::MutateRow(google::bigtable::v2::MutateRowRequest const& request) {
 
   return Status();
 }
+
+
 // NOLINTEND(readability-function-cognitive-complexity)
 
 bool FilteredTableStream::ApplyFilter(InternalFilter const& internal_filter) {
