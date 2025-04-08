@@ -344,6 +344,8 @@ StatusOr<StringRangeSet> CreateStringRangeSet(
 StatusOr<google::bigtable::v2::CheckAndMutateRowResponse>
 Table::CheckAndMutateRow(
     google::bigtable::v2::CheckAndMutateRowRequest const& request) {
+  std::lock_guard<std::mutex> lock(mu_);
+
   auto const& row_key = request.row_key();
   if (row_key.empty()) {
     return InvalidArgumentError(
@@ -369,7 +371,6 @@ Table::CheckAndMutateRow(
   }
   auto range_set = std::make_shared<StringRangeSet>(*std::move(maybe_row_set));
 
-  mu_.lock();
 
   auto table_stream_ctor = [range_set = std::move(range_set), this] {
     std::vector<std::unique_ptr<FilteredColumnFamilyStream>> per_cf_streams;
@@ -412,9 +413,9 @@ Table::CheckAndMutateRow(
         request.false_mutations().begin(), request.false_mutations().end());
   }
 
-  mu_.unlock();
-
-  auto status = MutateRow(mutate_row_request);
+  // Since we are already holding the table lock, we can (and must)
+  // call the unlocked version of MutateRow.
+  auto status = MutateRowUnlocked(mutate_row_request);
   if (!status.ok()) {
     return status;
   }
