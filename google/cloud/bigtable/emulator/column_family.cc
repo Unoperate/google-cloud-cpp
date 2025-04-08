@@ -173,21 +173,6 @@ absl::optional<Cell> ColumnFamily::DeleteTimeStamp(
   return ret;
 }
 
-std::vector<Cell> ColumnFamily::DeleteColumn(
-    std::map<std::string, ColumnFamilyRow>::iterator row_it,
-    std::string const& column_qualifier,
-    ::google::bigtable::v2::TimestampRange const& time_range) {
-  if (row_it != rows_.end()) {
-    auto erased_cells =
-        row_it->second.DeleteColumn(column_qualifier, time_range);
-    if (!row_it->second.HasColumns()) {
-      rows_.erase(row_it);
-    }
-    return erased_cells;
-  }
-  return {};
-}
-
 class FilteredColumnFamilyStream::FilterApply {
  public:
   explicit FilterApply(FilteredColumnFamilyStream& parent) : parent_(parent) {}
