@@ -338,24 +338,6 @@ class ColumnFamily {
 
   void clear() { rows_.clear(); }
 
-  std::map<std::string, ColumnFamilyRow>::iterator find(
-      std::string const& row_key) {
-    return rows_.find(row_key);
-  }
-
-  void erase(std::map<std::string, ColumnFamilyRow>::iterator row_it) {
-    rows_.erase(row_it);
-  }
-
-  std::map<std::string, ColumnFamilyRow>::iterator find(
-      std::string const& row_key) {
-    return rows_.find(row_key);
-  }
-
-  void erase(std::map<std::string, ColumnFamilyRow>::iterator row_it) {
-    rows_.erase(row_it);
-  }
-
  private:
   std::map<std::string, ColumnFamilyRow> rows_;
 };
