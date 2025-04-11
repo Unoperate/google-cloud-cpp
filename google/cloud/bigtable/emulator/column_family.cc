@@ -121,6 +121,30 @@ std::vector<Cell> ColumnFamilyRow::DeleteColumn(
 absl::optional<std::string> ColumnFamily::SetCell(
     std::string const& row_key, std::string const& column_qualifier,
     std::chrono::milliseconds timestamp, std::string const& value) {
+  // To support complex types (e.g. aggregations), check if a cell
+  // with the timestamp already exists. If it does, derive a new value
+  // to set by calling UpdateCell_ with the existing and new values.
+  std::string update_value;
+  auto column_family_row_it = find(row_key);
+  if (column_family_row_it != end()) {
+    auto column_it = column_family_row_it->second.find(column_qualifier);
+    if (column_it != column_family_row_it->second.end()) {
+      auto column_row_it = column_it->second.find(timestamp);
+      if (column_row_it != column_it->second.end()) {
+        // We are updating an existing cell
+        update_value = UpdateCell_(column_row_it->second, value);
+        return rows_[row_key].SetCell(column_qualifier, timestamp,
+                                      update_value);
+      }
+    }
+  }
+
+  // FIXME: Also to support aggregation of complex types, we
+  // definitely also need an InitializeCell_ function since some
+  // aggregation types may require special treatment of an initial
+  // value. However for now the aggregations that we support, Sum, Min
+  // and Max do not requre this.
+
   return rows_[row_key].SetCell(column_qualifier, timestamp, value);
 }
 
