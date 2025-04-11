@@ -607,54 +607,21 @@ Status RowTransaction::SetCell(
 
   auto& column_family = maybe_column_family->get();
 
-  bool cell_existed = true;
+  auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::microseconds(set_cell.timestamp_micros()));
 
-  auto column_family_row_it = column_family.find(request_.row_key());
-  std::string value_to_restore;
-  if (column_family_row_it == column_family.end()) {
-    cell_existed = false;
-  } else {
-    auto& column_family_row = column_family_row_it->second;
-    auto column_row_it = column_family_row.find(set_cell.column_qualifier());
-    if (column_row_it == column_family_row.end()) {
-      cell_existed = false;
-    } else {
-      auto timestamp_it = column_row_it->second.find(
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-              std::chrono::microseconds(set_cell.timestamp_micros())));
-      if (timestamp_it == column_row_it->second.end()) {
-        cell_existed = false;
-      } else {
-        value_to_restore = std::move(timestamp_it->second);
-      }
-    }
-  }
+  auto maybe_old_value =
+      column_family.SetCell(request_.row_key(), set_cell.column_qualifier(),
+                            timestamp, set_cell.value());
 
-  column_family.SetCell(
-      request_.row_key(), set_cell.column_qualifier(),
-      std::chrono::duration_cast<std::chrono::milliseconds>(
-          std::chrono::microseconds(set_cell.timestamp_micros())),
-      set_cell.value());
-
-  // If we have added a row, a column or a cell, we need to recompute
-  // these iterators.
-  column_family_row_it = column_family.find(request_.row_key());
-  auto& column_family_row = column_family_row_it->second;
-  auto column_row_it = column_family_row.find(set_cell.column_qualifier());
-  auto timestamp_it = column_row_it->second.find(
-      std::chrono::duration_cast<std::chrono::milliseconds>(
-          std::chrono::microseconds(set_cell.timestamp_micros())));
-
-  if (!cell_existed) {
+  if (!maybe_old_value) {
     DeleteValue delete_value{column_family,
-                             std::move(set_cell.column_qualifier()),
-                             timestamp_it->first};
+                             std::move(set_cell.column_qualifier()), timestamp};
     undo_.emplace(std::move(delete_value));
   } else {
     RestoreValue restore_value{column_family,
                                std::move(set_cell.column_qualifier()),
-                               timestamp_it->first,
-                               std::move(value_to_restore)};
+                               timestamp, std::move(maybe_old_value.value())};
     undo_.emplace(std::move(restore_value));
   }
 
@@ -682,14 +649,14 @@ void RowTransaction::Undo() {
     if (delete_value) {
       ::google::bigtable::v2::TimestampRange range;
       auto start_micros = std::chrono::duration_cast<std::chrono::microseconds>(
-          std::chrono::milliseconds(delete_value->timestamp.count()));
+          delete_value->timestamp);
       // The following is an exclusive upper bound, 1ms higher Since
       // timestamps have millisecond resolution, 2 timestamps have to
       // be at least 1ms apart which means that setting this as the
       // end of the range guarantees that we delete at most 1 (because
       // the upper bound is exclusive).
       auto end_micros = std::chrono::duration_cast<std::chrono::microseconds>(
-          std::chrono::milliseconds(delete_value->timestamp.count() + 1000));
+          delete_value->timestamp + std::chrono::milliseconds(1));
       range.set_start_timestamp_micros(start_micros.count());
       range.set_end_timestamp_micros(end_micros.count());
       delete_value->column_family.DeleteColumn(
