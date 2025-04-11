@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "google/cloud/bigtable/emulator/column_family.h"
+#include <absl/types/optional.h>
 #include <chrono>
 #include <map>
 
@@ -21,13 +22,22 @@ namespace cloud {
 namespace bigtable {
 namespace emulator {
 
-void ColumnRow::SetCell(std::chrono::milliseconds timestamp,
-                        std::string const& value) {
+absl::optional<std::string> ColumnRow::SetCell(
+    std::chrono::milliseconds timestamp, std::string const& value) {
   if (timestamp <= std::chrono::milliseconds::zero()) {
     timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch());
   }
+
+  absl::optional<std::string> ret = absl::nullopt;
+  auto cell_it = cells_.find(timestamp);
+  if (!(cell_it == cells_.end())) {
+    ret = std::move(cell_it->second);
+  }
+
   cells_[timestamp] = value;
+
+  return ret;
 }
 
 std::vector<Cell> ColumnRow::DeleteTimeRange(
@@ -42,16 +52,16 @@ std::vector<Cell> ColumnRow::DeleteTimeRange(
                              std::chrono::microseconds(
                                  time_range.end_timestamp_micros())));) {
     Cell cell = {std::move(cell_it->first), std::move(cell_it->second)};
-    deleted_cells.emplace_back(cell);
+    deleted_cells.emplace_back(std::move(cell));
     cells_.erase(cell_it++);
   }
   return deleted_cells;
 }
 
-void ColumnFamilyRow::SetCell(std::string const& column_qualifier,
+absl::optional<std::string> ColumnFamilyRow::SetCell(std::string const& column_qualifier,
                               std::chrono::milliseconds timestamp,
                               std::string const& value) {
-  columns_[column_qualifier].SetCell(timestamp, value);
+  return columns_[column_qualifier].SetCell(timestamp, value);
 }
 
 std::vector<Cell> ColumnFamilyRow::DeleteColumn(
@@ -68,11 +78,10 @@ std::vector<Cell> ColumnFamilyRow::DeleteColumn(
   return res;
 }
 
-void ColumnFamily::SetCell(std::string const& row_key,
-                           std::string const& column_qualifier,
-                           std::chrono::milliseconds timestamp,
-                           std::string const& value) {
-  rows_[row_key].SetCell(column_qualifier, timestamp, value);
+absl::optional<std::string> ColumnFamily::SetCell(
+    std::string const& row_key, std::string const& column_qualifier,
+    std::chrono::milliseconds timestamp, std::string const& value) {
+  return rows_[row_key].SetCell(column_qualifier, timestamp, value);
 }
 
 std::map<std::string, std::vector<Cell>> ColumnFamily::DeleteRow(
@@ -80,33 +89,20 @@ std::map<std::string, std::vector<Cell>> ColumnFamily::DeleteRow(
   std::map<std::string, std::vector<Cell>> res;
 
   auto row_it = rows_.find(row_key);
+  if (row_it == rows_.end()) {
+    return {};
+  }
 
-  for (auto column_it = row_it->second.begin();
-       row_it != rows_.end() && column_it != row_it->second.end();
-       // Why we call row_it->second.begin() every iteration:
-       // DeleteColumn can invalidate the iterator by deleting a
-       // column family row's keys (the column qualifiers and their
-       // column rows), therefore we need to re-calculate the
-       // beginning of the map every loop. At the same time because we
-       // are removing all cells of every column, we know DeleteColumn
-       // will eventually remove all the columns and the row itself,
-       // so this loop will terminate.
-       //
-       // Unfortunately we also have to re-initialize the row_it after
-       // every loop execution because DeleteColumn maintains the
-       // invariant that a row cannot be empty, so every loop
-       // execution can also delete the row_key and invalidate the
-       // iterator.
-       row_it = rows_.find(row_key),
-            column_it = row_it->second.begin()) {
-    // Not setting start and end timestamps selects all cells for deletion.
+  for (auto& column : row_it->second.columns_) {
+    // Not setting start and end timestamps will select all cells for deletion
     ::google::bigtable::v2::TimestampRange time_range;
-
-    auto deleted_column = DeleteColumn(row_it, column_it->first, time_range);
-    if (deleted_column.size() > 0) {
-      res[std::move(column_it->first)] = std::move(deleted_column);
+    auto deleted_cells = column.second.DeleteTimeRange(time_range);
+    if (deleted_cells.size() > 0) {
+      res[std::move(column.first)] = std::move(deleted_cells);
     }
   }
+
+  rows_.erase(row_key);
 
   return res;
 }
@@ -115,15 +111,8 @@ std::vector<Cell> ColumnFamily::DeleteColumn(
     std::string const& row_key, std::string const& column_qualifier,
     ::google::bigtable::v2::TimestampRange const& time_range) {
   auto row_it = rows_.find(row_key);
-  if (row_it != rows_.end()) {
-    auto erased_cells =
-        row_it->second.DeleteColumn(column_qualifier, time_range);
-    if (!row_it->second.HasColumns()) {
-      rows_.erase(row_it);
-    }
-    return erased_cells;
-  }
-  return std::vector<Cell>();
+
+  return DeleteColumn(row_it, column_qualifier, time_range);
 }
 
 std::vector<Cell> ColumnFamily::DeleteColumn(
