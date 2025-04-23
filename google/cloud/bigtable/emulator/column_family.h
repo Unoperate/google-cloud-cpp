@@ -199,24 +199,6 @@ class ColumnFamilyRow {
     columns_.erase(column_it);
   }
 
-  std::map<std::string, ColumnRow>::iterator find(
-      std::string const& column_qualifier) {
-    return columns_.find(column_qualifier);
-  }
-
-  void erase(std::map<std::string, ColumnRow>::iterator column_it) {
-    columns_.erase(column_it);
-  }
-
-  std::map<std::string, ColumnRow>::iterator find(
-      std::string const& column_qualifier) {
-    return columns_.find(column_qualifier);
-  }
-
-  void erase(std::map<std::string, ColumnRow>::iterator column_it) {
-    columns_.erase(column_it);
-  }
-
  private:
   friend class ColumnFamily;
 
@@ -298,6 +280,25 @@ class ColumnFamily {
    * @param row_key the row from which to delete the cell
    *
    * @param column_qualifier the column from which to delete the cell.
+   *
+   * @param timestamp the std::chrono::milliseconds timestamp of the
+   *     cell to delete.
+   *
+   * @return Cell representing deleted cell, if there was a cell with
+   *     that timestamp in then given column in the given row,
+   *     otherwise absl::nullopt.
+   */
+  absl::optional<Cell> DeleteTimeStamp(std::string const& row_key,
+                                       std::string const& column_qulifier,
+                                       std::chrono::milliseconds timestamp);
+
+  /**
+   * Delete a cell with the given timestamp from the column given by
+   *     the given column qualifier from the row given by row_key.
+   *
+   * @param row_key the row from which to delete the cell
+   *
+   * @param column_qualifer the column from which to delete the cell.
    *
    * @param timestamp the std::chrono::milliseconds timestamp of the
    *     cell to delete.
