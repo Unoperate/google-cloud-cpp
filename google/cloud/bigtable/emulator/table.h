@@ -17,6 +17,7 @@
 
 #include "google/cloud/bigtable/emulator/column_family.h"
 #include "google/cloud/bigtable/emulator/filter.h"
+#include "google/cloud/bigtable/emulator/range_set.h"
 #include "google/cloud/bigtable/emulator/row_streamer.h"
 #include "google/cloud/status.h"
 #include "google/cloud/status_or.h"
@@ -25,6 +26,7 @@
 #include <google/bigtable/admin/v2/table.pb.h>
 #include <google/bigtable/v2/bigtable.grpc.pb.h>
 #include <google/bigtable/v2/bigtable.pb.h>
+#include <google/bigtable/v2/data.pb.h>
 #include <google/protobuf/field_mask.pb.h>
 #include <google/protobuf/util/time_util.h>
 #include <chrono>
@@ -84,6 +86,9 @@ class Table : public std::enable_shared_from_this<Table> {
   Status Construct(google::bigtable::admin::v2::Table schema);
   Status MutateRowUnlocked(
       google::bigtable::v2::MutateRowRequest const& request);
+  StatusOr<CellStream> CreateCellStream(
+      std::shared_ptr<StringRangeSet> range_set,
+      absl::optional<google::bigtable::v2::RowFilter>);
 
   mutable std::mutex mu_;
   google::bigtable::admin::v2::Table schema_;

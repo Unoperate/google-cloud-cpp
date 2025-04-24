@@ -280,8 +280,28 @@ Status Table::MutateRowUnlocked(google::bigtable::v2::MutateRowRequest const& re
   return Status();
 }
 
-
 // NOLINTEND(readability-function-cognitive-complexity)
+
+StatusOr<CellStream> Table::CreateCellStream(
+    std::shared_ptr<StringRangeSet> range_set,
+    absl::optional<google::bigtable::v2::RowFilter> maybe_row_filter) {
+  auto table_stream_ctor = [range_set = std::move(range_set), this] {
+    std::vector<std::unique_ptr<FilteredColumnFamilyStream>> per_cf_streams;
+    per_cf_streams.reserve(column_families_.size());
+    for (auto const& column_family : column_families_) {
+      per_cf_streams.emplace_back(std::make_unique<FilteredColumnFamilyStream>(
+          *column_family.second, column_family.first, range_set));
+    }
+    return CellStream(
+        std::make_unique<FilteredTableStream>(std::move(per_cf_streams)));
+  };
+
+  if (maybe_row_filter.has_value()) {
+    return CreateFilter(maybe_row_filter.value(), table_stream_ctor);
+  }
+
+  return table_stream_ctor();
+}
 
 bool FilteredTableStream::ApplyFilter(InternalFilter const& internal_filter) {
   if (!absl::holds_alternative<FamilyNameRegex>(internal_filter)) {
