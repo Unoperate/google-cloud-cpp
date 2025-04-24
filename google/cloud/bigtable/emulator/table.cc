@@ -285,7 +285,7 @@ Status Table::MutateRowUnlocked(google::bigtable::v2::MutateRowRequest const& re
 
 StatusOr<CellStream> Table::CreateCellStream(
     std::shared_ptr<StringRangeSet> range_set,
-    absl::optional<google::bigtable::v2::RowFilter> maybe_row_filter) {
+    absl::optional<google::bigtable::v2::RowFilter> maybe_row_filter) const {
   auto table_stream_ctor = [range_set = std::move(range_set), this] {
     std::vector<std::unique_ptr<FilteredColumnFamilyStream>> per_cf_streams;
     per_cf_streams.reserve(column_families_.size());
@@ -448,22 +448,14 @@ Status Table::ReadRows(google::bigtable::v2::ReadRowsRequest const& request,
     row_set = std::make_shared<StringRangeSet>(StringRangeSet::All());
   }
   std::lock_guard<std::mutex> lock(mu_);
-  auto table_stream_ctor = [row_set = std::move(row_set), this] {
-    std::vector<std::unique_ptr<FilteredColumnFamilyStream>> per_cf_streams;
-    per_cf_streams.reserve(column_families_.size());
-    for (auto const& column_family : column_families_) {
-      per_cf_streams.emplace_back(std::make_unique<FilteredColumnFamilyStream>(
-          *column_family.second, column_family.first, row_set));
-    }
-    return CellStream(
-        std::make_unique<FilteredTableStream>(std::move(per_cf_streams)));
-  };
+
   StatusOr<CellStream> maybe_stream;
   if (request.has_filter()) {
-    maybe_stream = CreateFilter(request.filter(), table_stream_ctor);
+    maybe_stream = CreateCellStream(row_set, request.filter());
   } else {
-    maybe_stream = table_stream_ctor();
+    maybe_stream = CreateCellStream(row_set, absl::nullopt);
   }
+
   if (!maybe_stream) {
     return maybe_stream.status();
   }
