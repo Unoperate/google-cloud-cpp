@@ -305,7 +305,7 @@ Status Table::DoMutationsWithPossibleRollback(
 
 StatusOr<CellStream> Table::CreateCellStream(
     std::shared_ptr<StringRangeSet> range_set,
-    absl::optional<google::bigtable::v2::RowFilter> maybe_row_filter) {
+    absl::optional<google::bigtable::v2::RowFilter> maybe_row_filter) const {
   auto table_stream_ctor = [range_set = std::move(range_set), this] {
     std::vector<std::unique_ptr<FilteredColumnFamilyStream>> per_cf_streams;
     per_cf_streams.reserve(column_families_.size());
@@ -471,7 +471,7 @@ Status Table::ReadRows(google::bigtable::v2::ReadRowsRequest const& request,
 
   StatusOr<CellStream> maybe_stream;
   if (request.has_filter()) {
-    maybe_stream = CreateCellStream(row_set, std::move(request.filter()));
+    maybe_stream = CreateCellStream(row_set, request.filter());
   } else {
     maybe_stream = CreateCellStream(row_set, absl::nullopt);
   }
