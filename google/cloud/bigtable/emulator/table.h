@@ -22,6 +22,7 @@
 #include "google/cloud/status.h"
 #include "google/cloud/status_or.h"
 #include "absl/types/variant.h"
+#include "google/protobuf/repeated_ptr_field.h"
 #include <google/bigtable/admin/v2/bigtable_table_admin.grpc.pb.h>
 #include <google/bigtable/admin/v2/table.pb.h>
 #include <google/bigtable/v2/bigtable.grpc.pb.h>
@@ -89,6 +90,10 @@ class Table : public std::enable_shared_from_this<Table> {
   StatusOr<CellStream> CreateCellStream(
       std::shared_ptr<StringRangeSet> range_set,
       absl::optional<google::bigtable::v2::RowFilter>) const;
+  Status DoMutationsWithPossibleRollback(
+      std::string const& row_key,
+      google::protobuf::RepeatedPtrField<google::bigtable::v2::Mutation> const&
+          mutations);
 
   mutable std::mutex mu_;
   google::bigtable::admin::v2::Table schema_;
