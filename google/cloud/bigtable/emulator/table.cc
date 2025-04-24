@@ -383,14 +383,8 @@ Table::CheckAndMutateRow(
                                       request.DebugString()));
   }
 
-  google::bigtable::v2::RowSet row_set;
-  row_set.add_row_keys(row_key);
-
-  auto maybe_row_set = CreateStringRangeSet(row_set);
-  if (!maybe_row_set) {
-    return maybe_row_set.status();
-  }
-  auto range_set = std::make_shared<StringRangeSet>(*std::move(maybe_row_set));
+  auto range_set = std::make_shared<StringRangeSet>();
+  range_set->Sum(StringRangeSet::Range(row_key, false, row_key, false));
 
   StatusOr<CellStream> maybe_stream;
   if (request.has_predicate_filter()) {
