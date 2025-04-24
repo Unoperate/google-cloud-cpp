@@ -229,11 +229,6 @@ Status Table::MutateRow(google::bigtable::v2::MutateRowRequest const& request) {
   return MutateRowUnlocked(request);
 }
 
-Status Table::MutateRowUnlocked(google::bigtable::v2::MutateRowRequest const& request) {
-  assert(request.table_name() == schema_.name());
-
-  RowTransaction row_transaction(this->get(), request.row_key());
-
 Status Table::DoMutationsWithPossibleRollback(
     std::string const& row_key,
     google::protobuf::RepeatedPtrField<google::bigtable::v2::Mutation> const&
@@ -298,6 +293,14 @@ Status Table::DoMutationsWithPossibleRollback(
   row_transaction.commit();
 
   return Status();
+}
+
+Status Table::MutateRowUnlocked(
+    google::bigtable::v2::MutateRowRequest const& request) {
+  assert(request.table_name() == schema_.name());
+
+  return DoMutationsWithPossibleRollback(request.row_key(),
+                                         request.mutations());
 }
 
 // NOLINTEND(readability-function-cognitive-complexity)

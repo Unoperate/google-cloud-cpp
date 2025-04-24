@@ -91,6 +91,10 @@ class Table : public std::enable_shared_from_this<Table> {
   StatusOr<CellStream> CreateCellStream(
       std::shared_ptr<StringRangeSet> range_set,
       absl::optional<google::bigtable::v2::RowFilter>) const;
+  Status DoMutationsWithPossibleRollback(
+      std::string const& row_key,
+      google::protobuf::RepeatedPtrField<google::bigtable::v2::Mutation> const&
+          mutations);
 
   mutable std::mutex mu_;
   google::bigtable::admin::v2::Table schema_;
