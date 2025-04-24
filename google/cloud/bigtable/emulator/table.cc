@@ -413,21 +413,15 @@ Table::CheckAndMutateRow(
     a_cell_is_found = true;
   }
 
-  google::bigtable::v2::MutateRowRequest mutate_row_request;
-  mutate_row_request.set_row_key(row_key);
-  mutate_row_request.set_table_name(request.table_name());
-
+  Status status;
   if (a_cell_is_found) {
-    mutate_row_request.mutable_mutations()->Assign(
-        request.true_mutations().begin(), request.true_mutations().end());
+    status = DoMutationsWithPossibleRollback(request.row_key(),
+                                             request.true_mutations());
   } else {
-    mutate_row_request.mutable_mutations()->Assign(
-        request.false_mutations().begin(), request.false_mutations().end());
+    status = DoMutationsWithPossibleRollback(request.row_key(),
+                                             request.false_mutations());
   }
 
-  // Since we are already holding the table lock, we can (and must)
-  // call the unlocked version of MutateRow.
-  auto status = MutateRowUnlocked(mutate_row_request);
   if (!status.ok()) {
     return status;
   }
