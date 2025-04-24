@@ -301,12 +301,11 @@ Status Table::DoMutationsWithPossibleRollback(
   return Status();
 }
 
-
 // NOLINTEND(readability-function-cognitive-complexity)
 
 StatusOr<CellStream> Table::CreateCellStream(
     std::shared_ptr<StringRangeSet> range_set,
-    absl::optional<google::bigtable::v2::RowFilter> maybe_row_filter) const {
+    absl::optional<google::bigtable::v2::RowFilter> maybe_row_filter) {
   auto table_stream_ctor = [range_set = std::move(range_set), this] {
     std::vector<std::unique_ptr<FilteredColumnFamilyStream>> per_cf_streams;
     per_cf_streams.reserve(column_families_.size());

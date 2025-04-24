@@ -88,6 +88,9 @@ class Table : public std::enable_shared_from_this<Table> {
   Status Construct(google::bigtable::admin::v2::Table schema);
   Status MutateRowUnlocked(
       google::bigtable::v2::MutateRowRequest const& request);
+  StatusOr<CellStream> CreateCellStream(
+      std::shared_ptr<StringRangeSet> range_set,
+      absl::optional<google::bigtable::v2::RowFilter>);
 
   mutable std::mutex mu_;
   google::bigtable::admin::v2::Table schema_;
