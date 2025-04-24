@@ -23,6 +23,7 @@
 #include <google/bigtable/v2/bigtable.pb.h>
 #include <google/bigtable/v2/data.pb.h>
 #include <absl/strings/str_format.h>
+#include <absl/types/optional.h>
 #include <re2/re2.h>
 #include <chrono>
 #include <cstdlib>
@@ -391,23 +392,11 @@ Table::CheckAndMutateRow(
   }
   auto range_set = std::make_shared<StringRangeSet>(*std::move(maybe_row_set));
 
-
-  auto table_stream_ctor = [range_set = std::move(range_set), this] {
-    std::vector<std::unique_ptr<FilteredColumnFamilyStream>> per_cf_streams;
-    per_cf_streams.reserve(column_families_.size());
-    for (auto const& column_family : column_families_) {
-      per_cf_streams.emplace_back(std::make_unique<FilteredColumnFamilyStream>(
-          *column_family.second, column_family.first, range_set));
-    }
-    return CellStream(
-        std::make_unique<FilteredTableStream>(std::move(per_cf_streams)));
-  };
-
   StatusOr<CellStream> maybe_stream;
   if (request.has_predicate_filter()) {
-    maybe_stream = CreateFilter(request.predicate_filter(), table_stream_ctor);
+    maybe_stream = CreateCellStream(range_set, request.predicate_filter());
   } else {
-    maybe_stream = table_stream_ctor();
+    maybe_stream = CreateCellStream(range_set, absl::nullopt);
   }
 
   if (!maybe_stream) {
