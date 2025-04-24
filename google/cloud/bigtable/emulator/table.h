@@ -112,8 +112,8 @@ class RowTransaction {
  public:
   explicit RowTransaction(
       std::shared_ptr<Table> table,
-      ::google::bigtable::v2::MutateRowRequest const& request)
-      : request_(request) {
+      std::string const& row_key)
+      : row_key_(row_key) {
     table_ = std::move(table);
     committed_ = false;
   };
@@ -146,7 +146,7 @@ class RowTransaction {
   std::shared_ptr<Table> table_;
   std::stack<absl::variant<DeleteValue, RestoreValue>>
       undo_;
-  ::google::bigtable::v2::MutateRowRequest const& request_;
+  std::string const& row_key_;
 };
 
 /**

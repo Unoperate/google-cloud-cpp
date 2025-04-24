@@ -232,7 +232,7 @@ Status Table::MutateRow(google::bigtable::v2::MutateRowRequest const& request) {
 Status Table::MutateRowUnlocked(google::bigtable::v2::MutateRowRequest const& request) {
   assert(request.table_name() == schema_.name());
 
-  RowTransaction row_transaction(this->get(), request);
+  RowTransaction row_transaction(this->get(), request.row_key());
 
   for (const auto& mutation : request.mutations()) {
     if (mutation.has_set_cell()) {
@@ -509,7 +509,7 @@ Status RowTransaction::DeleteFromColumn(
   auto& column_family = maybe_column_family->get();
 
   auto deleted_cells = column_family.DeleteColumn(
-      request_.row_key(), delete_from_column.column_qualifier(),
+      row_key_, delete_from_column.column_qualifier(),
       delete_from_column.time_range());
 
   for (auto& cell : deleted_cells) {
@@ -526,7 +526,7 @@ Status RowTransaction::DeleteFromColumn(
 Status RowTransaction::DeleteFromRow() {
   bool row_existed;
   for (auto& column_family : table_->column_families_) {
-    auto deleted_columns = column_family.second->DeleteRow(request_.row_key());
+    auto deleted_columns = column_family.second->DeleteRow(row_key_);
 
     for (auto& column : deleted_columns) {
       for (auto& cell : column.second) {
@@ -545,7 +545,7 @@ Status RowTransaction::DeleteFromRow() {
 
   return NotFoundError(
       "row not found in table",
-      GCP_ERROR_INFO().WithMetadata("row", request_.row_key()));
+      GCP_ERROR_INFO().WithMetadata("row", row_key_));
 }
 
 Status RowTransaction::DeleteFromFamily(
@@ -567,17 +567,17 @@ Status RowTransaction::DeleteFromFamily(
   }
 
   std::map<std::string, ColumnFamilyRow>::iterator column_family_row_it;
-  if (column_family_it->second->find(request_.row_key()) ==
+  if (column_family_it->second->find(row_key_) ==
       column_family_it->second->end()) {
     // The row does not exist
     return NotFoundError(
         "row key is not found in column family",
         GCP_ERROR_INFO()
-            .WithMetadata("row key", request_.row_key())
+            .WithMetadata("row key", row_key_)
             .WithMetadata("column family", column_family_it->first));
   }
 
-  auto deleted = column_family_it->second->DeleteRow(request_.row_key());
+  auto deleted = column_family_it->second->DeleteRow(row_key_);
   for (auto const& column : deleted) {
     for (auto const& cell : column.second) {
       RestoreValue restore_value{*column_family_it->second,
@@ -608,7 +608,7 @@ Status RowTransaction::SetCell(
   }
 
   auto maybe_old_value =
-      column_family.SetCell(request_.row_key(), set_cell.column_qualifier(),
+      column_family.SetCell(row_key_, set_cell.column_qualifier(),
                             timestamp, set_cell.value());
 
   if (!maybe_old_value) {
@@ -626,7 +626,7 @@ Status RowTransaction::SetCell(
 }
 
 void RowTransaction::Undo() {
-  auto row_key = request_.row_key();
+  auto row_key = row_key_;
 
   while (!undo_.empty()) {
     auto op = undo_.top();
