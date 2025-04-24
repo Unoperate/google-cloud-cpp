@@ -232,8 +232,7 @@ Status Table::MutateRow(google::bigtable::v2::MutateRowRequest const& request) {
 Status Table::MutateRowUnlocked(google::bigtable::v2::MutateRowRequest const& request) {
   assert(request.table_name() == schema_.name());
 
-  return MutateRowUnlocked(request);
-}
+  RowTransaction row_transaction(this->get(), request.row_key());
 
 Status Table::DoMutationsWithPossibleRollback(
     std::string const& row_key,
@@ -628,8 +627,9 @@ Status RowTransaction::SetCell(
     timestamp = timestamp_override.value();
   }
 
-  auto maybe_old_value = column_family.SetCell(
-      row_key_, set_cell.column_qualifier(), timestamp, set_cell.value());
+  auto maybe_old_value =
+      column_family.SetCell(row_key_, set_cell.column_qualifier(),
+                            timestamp, set_cell.value());
 
   if (!maybe_old_value) {
     DeleteValue delete_value{column_family,
