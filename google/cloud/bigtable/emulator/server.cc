@@ -18,9 +18,16 @@
 #include "google/cloud/internal/make_status.h"
 #include <google/bigtable/admin/v2/bigtable_table_admin.grpc.pb.h>
 #include <google/bigtable/v2/bigtable.grpc.pb.h>
+#include <google/bigtable/v2/bigtable.pb.h>
 #include <google/protobuf/util/time_util.h>
+#include <absl/strings/str_cat.h>
+#include <absl/strings/str_format.h>
+#include <grpcpp/impl/call_op_set.h>
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
+#include <grpcpp/support/client_callback.h>
+#include <grpcpp/support/status.h>
+#include <cstdint>
 
 namespace google {
 namespace cloud {
@@ -67,8 +74,50 @@ class EmulatorService final : public btproto::Bigtable::Service {
 
   grpc::Status MutateRows(
       grpc::ServerContext* /* context */,
-      btproto::MutateRowsRequest const* /* request */,
-      grpc::ServerWriter<btproto::MutateRowsResponse>* /* writer */) override {
+      btproto::MutateRowsRequest const* request,
+      grpc::ServerWriter<btproto::MutateRowsResponse>* writer) override {
+    auto maybe_table = cluster_->FindTable(request->table_name());
+    if (!maybe_table) {
+      return ToGrpcStatus(maybe_table.status());
+    }
+
+    int num_errors = 0;
+
+    int64_t index = 0;
+    google::bigtable::v2::MutateRowsResponse response;
+
+    for (auto const& entry : request->entries()) {
+      response.Clear();
+
+      auto status = (*maybe_table)
+                        ->DoMutationsWithPossibleRollbackLocked(
+                            entry.row_key(), entry.mutations());
+      if (!status.ok()) {
+        num_errors++;
+      }
+
+      auto* response_entry = response.add_entries();
+      response_entry->set_index(index++);
+      auto* s = response_entry->mutable_status();
+      s->set_code(static_cast<int32_t>(status.code()));
+      s->set_message(std::move(status.message()));
+
+      if (index == request->entries_size()) {
+        auto opts = grpc::WriteOptions();
+        opts.set_last_message();
+        writer->WriteLast(response, opts);
+      } else {
+        writer->Write(response);
+      }
+    }
+
+    if (num_errors) {
+      return ToGrpcStatus(UnknownError(
+          "Mutations to some rows failed",
+          GCP_ERROR_INFO().WithMetadata("Number of failed row Mutations",
+                                        absl::StrFormat("%d", num_errors))));
+    }
+
     return grpc::Status::OK;
   }
 
