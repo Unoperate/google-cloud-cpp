@@ -292,25 +292,6 @@ class ColumnFamily {
                                        std::string const& column_qulifier,
                                        std::chrono::milliseconds timestamp);
 
-  /**
-   * Delete a cell with the given timestamp from the column given by
-   *     the given column qualifier from the row given by row_key.
-   *
-   * @param row_key the row from which to delete the cell
-   *
-   * @param column_qualifer the column from which to delete the cell.
-   *
-   * @param timestamp the std::chrono::milliseconds timestamp of the
-   *     cell to delete.
-   *
-   * @return Cell representing deleted cell, if there was a cell with
-   *     that timestamp in then given column in the given row,
-   *     otherwise absl::nullopt.
-   */
-  absl::optional<Cell> DeleteTimeStamp(std::string const& row_key,
-                                       std::string const& column_qulifier,
-                                       std::chrono::milliseconds timestamp);
-
   const_iterator begin() const { return rows_.begin(); }
   iterator begin() { return rows_.begin(); }
   const_iterator end() const { return rows_.end(); }
