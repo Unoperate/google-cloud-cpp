@@ -410,7 +410,8 @@ Table::CheckAndMutateRow(
 
   StatusOr<CellStream> maybe_stream;
   if (request.has_predicate_filter()) {
-    maybe_stream = CreateCellStream(range_set, request.predicate_filter());
+    maybe_stream =
+        CreateCellStream(range_set, std::move(request.predicate_filter()));
   } else {
     maybe_stream = CreateCellStream(range_set, absl::nullopt);
   }
@@ -461,7 +462,7 @@ Status Table::ReadRows(google::bigtable::v2::ReadRowsRequest const& request,
 
   StatusOr<CellStream> maybe_stream;
   if (request.has_filter()) {
-    maybe_stream = CreateCellStream(row_set, request.filter());
+    maybe_stream = CreateCellStream(row_set, std::move(request.filter()));
   } else {
     maybe_stream = CreateCellStream(row_set, absl::nullopt);
   }
