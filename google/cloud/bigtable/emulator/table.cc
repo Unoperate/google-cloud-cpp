@@ -238,7 +238,20 @@ Status Table::DoMutationsWithPossibleRollback(
   for (auto const& mutation : mutations) {
     if (mutation.has_set_cell()) {
       auto const& set_cell = mutation.set_cell();
-      auto status = row_transaction.SetCell(set_cell);
+
+      absl::optional<std::chrono::milliseconds> timestamp_override =
+          absl::nullopt;
+
+      auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::microseconds(set_cell.timestamp_micros()));
+
+      if (timestamp <= std::chrono::milliseconds::zero()) {
+        timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch());
+        timestamp_override.emplace(std::move(timestamp));
+      }
+
+      auto status = row_transaction.SetCell(set_cell, timestamp_override);
       if (!status.ok()) {
         return status;
       }
@@ -595,7 +608,8 @@ Status RowTransaction::DeleteFromFamily(
 }
 
 Status RowTransaction::SetCell(
-    ::google::bigtable::v2::Mutation_SetCell const& set_cell) {
+    ::google::bigtable::v2::Mutation_SetCell const& set_cell,
+    absl::optional<std::chrono::milliseconds> timestamp_override) {
   auto maybe_column_family = table_->FindColumnFamily(set_cell);
   if (!maybe_column_family) {
     return maybe_column_family.status();
@@ -606,14 +620,12 @@ Status RowTransaction::SetCell(
   auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::microseconds(set_cell.timestamp_micros()));
 
-  if (timestamp <= std::chrono::milliseconds::zero()) {
-    timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch());
+  if (timestamp_override.has_value()) {
+    timestamp = timestamp_override.value();
   }
 
-  auto maybe_old_value =
-      column_family.SetCell(row_key_, set_cell.column_qualifier(),
-                            timestamp, set_cell.value());
+  auto maybe_old_value = column_family.SetCell(
+      row_key_, set_cell.column_qualifier(), timestamp, set_cell.value());
 
   if (!maybe_old_value) {
     DeleteValue delete_value{column_family,

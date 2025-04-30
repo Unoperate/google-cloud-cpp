@@ -30,6 +30,7 @@
 #include <google/bigtable/v2/data.pb.h>
 #include <google/protobuf/field_mask.pb.h>
 #include <google/protobuf/util/time_util.h>
+#include <absl/types/optional.h>
 #include <chrono>
 #include <map>
 #include <memory>
@@ -131,7 +132,9 @@ class RowTransaction {
 
   void commit() { committed_ = true; }
 
-  Status SetCell(::google::bigtable::v2::Mutation_SetCell const& set_cell);
+  Status SetCell(::google::bigtable::v2::Mutation_SetCell const& set_cell,
+                 absl::optional<std::chrono::milliseconds> timestamp_override =
+                     absl::nullopt);
   Status AddToCell(
       ::google::bigtable::v2::Mutation_AddToCell const& add_to_cell);
   Status MergeToCell(
