@@ -226,7 +226,8 @@ StatusOr<std::reference_wrapper<ColumnFamily>> Table::FindColumnFamily(
 Status Table::MutateRow(google::bigtable::v2::MutateRowRequest const& request) {
   std::lock_guard<std::mutex> lock(mu_);
 
-  return MutateRowUnlocked(request);
+  return DoMutationsWithPossibleRollback(request.row_key(),
+                                         request.mutations());
 }
 
 Status Table::DoMutationsWithPossibleRollback(
@@ -294,16 +295,6 @@ Status Table::DoMutationsWithPossibleRollback(
 
   return Status();
 }
-
-Status Table::MutateRowUnlocked(
-    google::bigtable::v2::MutateRowRequest const& request) {
-  assert(request.table_name() == schema_.name());
-
-  return DoMutationsWithPossibleRollback(request.row_key(),
-                                         request.mutations());
-}
-
-// NOLINTEND(readability-function-cognitive-complexity)
 
 StatusOr<CellStream> Table::CreateCellStream(
     std::shared_ptr<StringRangeSet> range_set,
@@ -608,6 +599,9 @@ Status RowTransaction::DeleteFromFamily(
   return Status();
 }
 
+// timestamp_override, if provided, will be used instead of
+// set_cell.timestamp. The override is used to set the timestamp to
+// the server time in case a timestamp <= 0 is provided.
 Status RowTransaction::SetCell(
     ::google::bigtable::v2::Mutation_SetCell const& set_cell,
     absl::optional<std::chrono::milliseconds> timestamp_override) {
