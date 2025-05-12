@@ -552,9 +552,8 @@ Status RowTransaction::DeleteFromRow() {
     return Status();
   }
 
-  return NotFoundError(
-      "row not found in table",
-      GCP_ERROR_INFO().WithMetadata("row", row_key_));
+  return NotFoundError("row not found in table",
+                       GCP_ERROR_INFO().WithMetadata("row", row_key_));
 }
 
 Status RowTransaction::DeleteFromFamily(

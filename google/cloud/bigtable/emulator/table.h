@@ -114,9 +114,8 @@ struct DeleteValue {
 
 class RowTransaction {
  public:
-  explicit RowTransaction(
-      std::shared_ptr<Table> table,
-      std::string const& row_key)
+  explicit RowTransaction(std::shared_ptr<Table> table,
+                          std::string const& row_key)
       : row_key_(row_key) {
     table_ = std::move(table);
     committed_ = false;
@@ -153,8 +152,7 @@ class RowTransaction {
 
   bool committed_;
   std::shared_ptr<Table> table_;
-  std::stack<absl::variant<DeleteValue, RestoreValue>>
-      undo_;
+  std::stack<absl::variant<DeleteValue, RestoreValue>> undo_;
   // row_key_ is initialized from the request proto and therefore it
   // is safe to access it while the mutation request is ongoing. We
   // store a reference to it to avoid copying a potentially very large
