@@ -95,8 +95,6 @@ class Table : public std::enable_shared_from_this<Table> {
       MESSAGE const& message) const;
   bool IsDeleteProtectedNoLock() const;
   Status Construct(google::bigtable::admin::v2::Table schema);
-  Status MutateRowUnlocked(
-      google::bigtable::v2::MutateRowRequest const& request);
   StatusOr<CellStream> CreateCellStream(
       std::shared_ptr<StringRangeSet> range_set,
       absl::optional<google::bigtable::v2::RowFilter>) const;
@@ -125,9 +123,8 @@ struct DeleteValue {
 
 class RowTransaction {
  public:
-  explicit RowTransaction(
-      std::shared_ptr<Table> table,
-      std::string const& row_key)
+  explicit RowTransaction(std::shared_ptr<Table> table,
+                          std::string const& row_key)
       : row_key_(row_key) {
     table_ = std::move(table);
     committed_ = false;
@@ -141,6 +138,9 @@ class RowTransaction {
 
   void commit() { committed_ = true; }
 
+  // timestamp_override, if provided, will be used instead of
+  // set_cell.timestamp. The override is used to set the timestamp to
+  // the server time in case a timestamp <= 0 is provided.
   Status SetCell(::google::bigtable::v2::Mutation_SetCell const& set_cell,
                  absl::optional<std::chrono::milliseconds> timestamp_override =
                      absl::nullopt);
@@ -161,8 +161,11 @@ class RowTransaction {
 
   bool committed_;
   std::shared_ptr<Table> table_;
-  std::stack<absl::variant<DeleteValue, RestoreValue>>
-      undo_;
+  std::stack<absl::variant<DeleteValue, RestoreValue>> undo_;
+  // row_key_ is initialized from the request proto and therefore it
+  // is safe to access it while the mutation request is ongoing. We
+  // store a reference to it to avoid copying a potentially very large
+  // (up to 4KB) value.
   std::string const& row_key_;
 };
 

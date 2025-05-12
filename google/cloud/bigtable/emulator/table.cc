@@ -226,7 +226,8 @@ StatusOr<std::reference_wrapper<ColumnFamily>> Table::FindColumnFamily(
 Status Table::MutateRow(google::bigtable::v2::MutateRowRequest const& request) {
   std::lock_guard<std::mutex> lock(mu_);
 
-  return MutateRowUnlocked(request);
+  return DoMutationsWithPossibleRollback(request.row_key(),
+                                         request.mutations());
 }
 
 Status Table::DoMutationsWithPossibleRollback(
@@ -294,16 +295,6 @@ Status Table::DoMutationsWithPossibleRollback(
 
   return Status();
 }
-
-Status Table::MutateRowUnlocked(
-    google::bigtable::v2::MutateRowRequest const& request) {
-  assert(request.table_name() == schema_.name());
-
-  return DoMutationsWithPossibleRollback(request.row_key(),
-                                         request.mutations());
-}
-
-// NOLINTEND(readability-function-cognitive-complexity)
 
 StatusOr<CellStream> Table::CreateCellStream(
     std::shared_ptr<StringRangeSet> range_set,
@@ -410,7 +401,8 @@ Table::CheckAndMutateRow(
 
   StatusOr<CellStream> maybe_stream;
   if (request.has_predicate_filter()) {
-    maybe_stream = CreateCellStream(range_set, request.predicate_filter());
+    maybe_stream =
+        CreateCellStream(range_set, std::move(request.predicate_filter()));
   } else {
     maybe_stream = CreateCellStream(range_set, absl::nullopt);
   }
@@ -461,7 +453,7 @@ Status Table::ReadRows(google::bigtable::v2::ReadRowsRequest const& request,
 
   StatusOr<CellStream> maybe_stream;
   if (request.has_filter()) {
-    maybe_stream = CreateCellStream(row_set, request.filter());
+    maybe_stream = CreateCellStream(row_set, std::move(request.filter()));
   } else {
     maybe_stream = CreateCellStream(row_set, absl::nullopt);
   }
@@ -560,9 +552,8 @@ Status RowTransaction::DeleteFromRow() {
     return Status();
   }
 
-  return NotFoundError(
-      "row not found in table",
-      GCP_ERROR_INFO().WithMetadata("row", row_key_));
+  return NotFoundError("row not found in table",
+                       GCP_ERROR_INFO().WithMetadata("row", row_key_));
 }
 
 Status RowTransaction::DeleteFromFamily(
@@ -607,6 +598,9 @@ Status RowTransaction::DeleteFromFamily(
   return Status();
 }
 
+// timestamp_override, if provided, will be used instead of
+// set_cell.timestamp. The override is used to set the timestamp to
+// the server time in case a timestamp <= 0 is provided.
 Status RowTransaction::SetCell(
     ::google::bigtable::v2::Mutation_SetCell const& set_cell,
     absl::optional<std::chrono::milliseconds> timestamp_override) {
@@ -624,9 +618,8 @@ Status RowTransaction::SetCell(
     timestamp = timestamp_override.value();
   }
 
-  auto maybe_old_value =
-      column_family.SetCell(row_key_, set_cell.column_qualifier(),
-                            timestamp, set_cell.value());
+  auto maybe_old_value = column_family.SetCell(
+      row_key_, set_cell.column_qualifier(), timestamp, set_cell.value());
 
   if (!maybe_old_value) {
     DeleteValue delete_value{column_family,
