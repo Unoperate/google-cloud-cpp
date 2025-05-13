@@ -277,6 +277,9 @@ class ColumnFamily {
   const_iterator lower_bound(std::string const& row_key) const {
     return rows_.lower_bound(row_key);
   }
+  mutable_iterator mutable_lower_bound(std::string const& row_key) {
+    return rows_.lower_bound(row_key);
+  }
   const_iterator upper_bound(std::string const& row_key) const {
     return rows_.upper_bound(row_key);
   }
@@ -286,8 +289,8 @@ class ColumnFamily {
     return rows_.find(row_key);
   }
 
-  void erase(std::map<std::string, ColumnFamilyRow>::iterator row_it) {
-    rows_.erase(row_it);
+  mutable_iterator erase(std::map<std::string, ColumnFamilyRow>::iterator row_it) {
+    return rows_.erase(row_it);
   }
 
   void clear() {

@@ -523,10 +523,12 @@ Status Table::DropRowRange(
   }
 
   for (auto& cf : column_families_) {
-    for (auto row_it = cf.second->begin_mutable(); row_it != cf.second->end();
-         row_it++) {
+    for (auto row_it = cf.second->mutable_lower_bound(row_prefix);
+         row_it != cf.second->end(); row_it++) {
       if (absl::StartsWith(row_it->first, row_prefix)) {
-        cf.second->erase(row_it);
+        row_it = cf.second->erase(row_it);
+      } else {
+        break;
       }
     }
   }
