@@ -514,7 +514,7 @@ Status Table::DropRowRange(
     return Status();
   }
 
-  const auto& row_prefix = request.row_key_prefix();
+  auto const& row_prefix = request.row_key_prefix();
   if (row_prefix.empty()) {
     return InvalidArgumentError(
         "Row prefix provided is empty.",
@@ -535,7 +535,6 @@ Status Table::DropRowRange(
 
   return Status();
 }
-
 
 // NOLINTBEGIN(readability-convert-member-functions-to-static)
 Status RowTransaction::AddToCell(

@@ -58,7 +58,6 @@ StatusOr<std::shared_ptr<Table>> create_table(
   return Table::Create(schema);
 }
 
-
 Status set_cells(
     std::shared_ptr<google::cloud::bigtable::emulator::Table>& table,
     std::string const& table_name, std::string const& row_key,
@@ -84,8 +83,7 @@ Status set_cells_in_multiple_rows(
     std::string const& table_name,
     std::map<std::string, std::vector<SetCellParams>> params) {
   for (auto& p : params) {
-    auto status = set_cells(
-        table, table_name, p.first, p.second);
+    auto status = set_cells(table, table_name, p.first, p.second);
     if (!status.ok()) {
       return status;
     }
@@ -144,8 +142,9 @@ Status has_cell(
   return Status();
 }
 
-StatusOr<bool> has_row(std::shared_ptr<google::cloud::bigtable::emulator::Table>& table,
-               std::string const& column_family, std::string const& row_key) {
+StatusOr<bool> has_row(
+    std::shared_ptr<google::cloud::bigtable::emulator::Table>& table,
+    std::string const& column_family, std::string const& row_key) {
   auto column_family_it = table->find(column_family);
   if (column_family_it == table->end()) {
     return NotFoundError(

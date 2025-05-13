@@ -25,7 +25,6 @@
 #include <grpcpp/impl/call_op_set.h>
 #include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
-#include <grpcpp/support/status.h>
 #include <grpcpp/support/client_callback.h>
 #include <grpcpp/support/status.h>
 #include <cstdint>

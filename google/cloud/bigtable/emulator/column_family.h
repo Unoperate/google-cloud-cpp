@@ -289,13 +289,12 @@ class ColumnFamily {
     return rows_.find(row_key);
   }
 
-  mutable_iterator erase(std::map<std::string, ColumnFamilyRow>::iterator row_it) {
+  mutable_iterator erase(
+      std::map<std::string, ColumnFamilyRow>::iterator row_it) {
     return rows_.erase(row_it);
   }
 
-  void clear() {
-    rows_.clear();
-  }
+  void clear() { rows_.clear(); }
 
  private:
   std::map<std::string, ColumnFamilyRow> rows_;
