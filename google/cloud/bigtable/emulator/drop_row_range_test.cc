@@ -26,6 +26,7 @@
 #include <google/bigtable/v2/bigtable.grpc.pb.h>
 #include <google/bigtable/v2/bigtable.pb.h>
 #include <google/bigtable/v2/data.pb.h>
+#include <absl/strings/match.h>
 #include <absl/strings/str_format.h>
 #include <gtest/gtest.h>
 #include <chrono>
@@ -171,11 +172,15 @@ TEST(DropRowRange, DropAll) {
 
   auto table = maybe_table.value();
 
-  std::map<std::string, SetCellParams> params = {
-      {"0", {column_families[0], "column_1", 1000, "data_0"}},
-      {"1", {column_families[0], "column_1", 2000, "data_1"}},
-      {"0", {column_families[1], "column_1", 3000, "data_2"}},
-      {"1", {column_families[1], "column_1", 4000, "data_3"}}};
+  std::map<std::string, std::vector<SetCellParams>> params = {
+      {"0",
+       {{column_families[0], "column_1", 1000, "data_0"},
+        {column_families[1], "column_1", 3000, "data_2"}}},
+      {"1",
+       {{column_families[0], "column_1", 2000, "data_1"},
+        {column_families[1], "column_1", 4000, "data_3"}}}};
+
+  ASSERT_STATUS_OK(set_cells_in_multiple_rows(table, table_name, params));
 
   ::google::bigtable::admin::v2::DropRowRangeRequest request;
   request.set_name(table_name);
@@ -185,9 +190,62 @@ TEST(DropRowRange, DropAll) {
   ASSERT_STATUS_OK(status);
 
   for (auto& p : params) {
-    auto status_or = has_row(table, p.second.column_family_name, p.first);
-    ASSERT_STATUS_OK(status_or.status());
-    ASSERT_FALSE(status_or.value());
+    for (auto& set_cell_params : p.second) {
+      auto status_or =
+          has_row(table, set_cell_params.column_family_name, p.first);
+      ASSERT_STATUS_OK(status_or);
+      ASSERT_FALSE(status_or.value());
+    }
+  }
+}
+
+TEST(DropRowRange, DropSome) {
+  auto const* const table_name = "projects/test/instances/test/tables/test";
+  std::vector<std::string> column_families = {"column_family_1",
+                                              "column_family_2"};
+
+  auto maybe_table = create_table(table_name, column_families);
+  ASSERT_STATUS_OK(maybe_table);
+
+  auto table = maybe_table.value();
+
+  std::map<std::string, std::vector<SetCellParams>> params = {
+      {"a",
+       {
+           {column_families[0], "column_1", 1000, "data_0"},
+       }},
+      {"aa",
+       {{column_families[0], "column_1", 2000, "data_1"},
+        {column_families[1], "column_1", 5000, "data_5"}}},
+      {"aaa", {{column_families[0], "column_1", 3000, "data_2"}}},
+      {"aab", {{column_families[0], "column_1", 4000, "data_3"}}},
+      {"ab", {{column_families[1], "column_1", 6000, "data_6"}}},
+  };
+
+  ASSERT_STATUS_OK(set_cells_in_multiple_rows(table, table_name, params));
+
+  ::google::bigtable::admin::v2::DropRowRangeRequest request;
+  request.set_name(table_name);
+  std::string prefix = "aa";
+  request.set_row_key_prefix(prefix);
+
+  auto status = table->DropRowRange(request);
+  ASSERT_STATUS_OK(status);
+
+  for (auto& p : params) {
+    for (auto& set_cell_params : p.second) {
+      if (absl::StartsWith(p.first, prefix)) {
+        auto status_or =
+            has_row(table, set_cell_params.column_family_name, p.first);
+        ASSERT_STATUS_OK(status_or);
+        ASSERT_FALSE(status_or.value());
+      } else {
+        auto status_or =
+            has_row(table, set_cell_params.column_family_name, p.first);
+        ASSERT_STATUS_OK(status_or);
+        ASSERT_TRUE(status_or.value());
+      }
+    }
   }
 }
 
