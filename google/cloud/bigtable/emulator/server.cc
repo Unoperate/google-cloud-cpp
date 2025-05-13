@@ -94,7 +94,7 @@ class EmulatorService final : public btproto::Bigtable::Service {
       auto* response_entry = response.add_entries();
       response_entry->set_index(index++);
       auto* s = response_entry->mutable_status();
-      s->CopyFrom(ToGoogleRPCStatus(status));
+      *s = ToGoogleRPCStatus(status);
 
       if (index == request->entries_size()) {
         auto opts = grpc::WriteOptions();

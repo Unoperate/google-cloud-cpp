@@ -82,7 +82,7 @@ google::rpc::Status RPCStatusFromStatusAndErrorInfo(
   rpc_status.set_code(static_cast<std::int32_t>(to_convert.code()));
   rpc_status.set_message(to_convert.message());
   auto& rpc_status_details = *rpc_status.add_details();
-  rpc_status_details.PackFrom(std::move(error_info));
+  rpc_status_details.PackFrom(error_info);
 
   return rpc_status;
 }
