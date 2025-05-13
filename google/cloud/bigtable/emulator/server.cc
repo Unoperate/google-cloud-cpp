@@ -81,8 +81,6 @@ class EmulatorService final : public btproto::Bigtable::Service {
       return ToGrpcStatus(maybe_table.status());
     }
 
-    int num_errors = 0;
-
     int64_t index = 0;
     google::bigtable::v2::MutateRowsResponse response;
 
@@ -92,15 +90,11 @@ class EmulatorService final : public btproto::Bigtable::Service {
       auto status = (*maybe_table)
                         ->DoMutationsWithPossibleRollbackLocked(
                             entry.row_key(), entry.mutations());
-      if (!status.ok()) {
-        num_errors++;
-      }
 
       auto* response_entry = response.add_entries();
       response_entry->set_index(index++);
       auto* s = response_entry->mutable_status();
-      s->set_code(static_cast<int32_t>(status.code()));
-      s->set_message(std::move(status.message()));
+      s->CopyFrom(ToGoogleRPCStatus(status));
 
       if (index == request->entries_size()) {
         auto opts = grpc::WriteOptions();
@@ -109,13 +103,6 @@ class EmulatorService final : public btproto::Bigtable::Service {
       } else {
         writer->Write(response);
       }
-    }
-
-    if (num_errors) {
-      return ToGrpcStatus(UnknownError(
-          "Mutations to some rows failed",
-          GCP_ERROR_INFO().WithMetadata("Number of failed row Mutations",
-                                        absl::StrFormat("%d", num_errors))));
     }
 
     return grpc::Status::OK;
