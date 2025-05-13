@@ -64,7 +64,7 @@ class Table : public std::enable_shared_from_this<Table> {
   Status DoMutationsWithPossibleRollbackLocked(
       std::string const& row_key,
       google::protobuf::RepeatedPtrField<google::bigtable::v2::Mutation> const&
-      mutations) {
+          mutations) {
     std::lock_guard<std::mutex> lock(mu_);
 
     return DoMutationsWithPossibleRollback(row_key, mutations);
