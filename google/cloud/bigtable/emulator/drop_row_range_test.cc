@@ -47,7 +47,7 @@ struct SetCellParams {
   std::string data;
 };
 
-StatusOr<std::shared_ptr<Table>> create_table(
+StatusOr<std::shared_ptr<Table>> CreateTable(
     std::string const& table_name, std::vector<std::string>& column_families) {
   ::google::bigtable::admin::v2::Table schema;
   schema.set_name(table_name);
@@ -59,7 +59,7 @@ StatusOr<std::shared_ptr<Table>> create_table(
   return Table::Create(schema);
 }
 
-Status set_cells(
+Status SetCells(
     std::shared_ptr<google::cloud::bigtable::emulator::Table>& table,
     std::string const& table_name, std::string const& row_key,
     std::vector<SetCellParams>& set_cell_params) {
@@ -79,12 +79,12 @@ Status set_cells(
   return table->MutateRow(mutation_request);
 }
 
-Status set_cells_in_multiple_rows(
+Status SetCellsInMultipleRows(
     std::shared_ptr<google::cloud::bigtable::emulator::Table> table,
     std::string const& table_name,
     std::map<std::string, std::vector<SetCellParams>> params) {
   for (auto& p : params) {
-    auto status = set_cells(table, table_name, p.first, p.second);
+    auto status = SetCells(table, table_name, p.first, p.second);
     if (!status.ok()) {
       return status;
     }
@@ -93,7 +93,7 @@ Status set_cells_in_multiple_rows(
   return Status();
 }
 
-Status has_cell(
+Status HasCell(
     std::shared_ptr<google::cloud::bigtable::emulator::Table>& table,
     std::string const& column_family, std::string const& row_key,
     std::string const& column_qualifier, int64_t timestamp_micros,
@@ -143,7 +143,7 @@ Status has_cell(
   return Status();
 }
 
-StatusOr<bool> has_row(
+StatusOr<bool> HasRow(
     std::shared_ptr<google::cloud::bigtable::emulator::Table>& table,
     std::string const& column_family, std::string const& row_key) {
   auto column_family_it = table->find(column_family);
@@ -167,7 +167,7 @@ TEST(DropRowRange, DropAll) {
   std::vector<std::string> column_families = {"column_family_1",
                                               "column_family_2"};
 
-  auto maybe_table = create_table(table_name, column_families);
+  auto maybe_table = CreateTable(table_name, column_families);
   ASSERT_STATUS_OK(maybe_table);
 
   auto table = maybe_table.value();
@@ -180,7 +180,7 @@ TEST(DropRowRange, DropAll) {
        {{column_families[0], "column_1", 2000, "data_1"},
         {column_families[1], "column_1", 4000, "data_3"}}}};
 
-  ASSERT_STATUS_OK(set_cells_in_multiple_rows(table, table_name, params));
+  ASSERT_STATUS_OK(SetCellsInMultipleRows(table, table_name, params));
 
   ::google::bigtable::admin::v2::DropRowRangeRequest request;
   request.set_name(table_name);
@@ -192,7 +192,7 @@ TEST(DropRowRange, DropAll) {
   for (auto& p : params) {
     for (auto& set_cell_params : p.second) {
       auto status_or =
-          has_row(table, set_cell_params.column_family_name, p.first);
+          HasRow(table, set_cell_params.column_family_name, p.first);
       ASSERT_STATUS_OK(status_or);
       ASSERT_FALSE(status_or.value());
     }
@@ -204,7 +204,7 @@ TEST(DropRowRange, DropSome) {
   std::vector<std::string> column_families = {"column_family_1",
                                               "column_family_2"};
 
-  auto maybe_table = create_table(table_name, column_families);
+  auto maybe_table = CreateTable(table_name, column_families);
   ASSERT_STATUS_OK(maybe_table);
 
   auto table = maybe_table.value();
@@ -222,7 +222,7 @@ TEST(DropRowRange, DropSome) {
       {"ab", {{column_families[1], "column_1", 6000, "data_6"}}},
   };
 
-  ASSERT_STATUS_OK(set_cells_in_multiple_rows(table, table_name, params));
+  ASSERT_STATUS_OK(SetCellsInMultipleRows(table, table_name, params));
 
   ::google::bigtable::admin::v2::DropRowRangeRequest request;
   request.set_name(table_name);
@@ -236,12 +236,12 @@ TEST(DropRowRange, DropSome) {
     for (auto& set_cell_params : p.second) {
       if (absl::StartsWith(p.first, prefix)) {
         auto status_or =
-            has_row(table, set_cell_params.column_family_name, p.first);
+            HasRow(table, set_cell_params.column_family_name, p.first);
         ASSERT_STATUS_OK(status_or);
         ASSERT_FALSE(status_or.value());
       } else {
         auto status_or =
-            has_row(table, set_cell_params.column_family_name, p.first);
+            HasRow(table, set_cell_params.column_family_name, p.first);
         ASSERT_STATUS_OK(status_or);
         ASSERT_TRUE(status_or.value());
       }
