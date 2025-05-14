@@ -341,13 +341,13 @@ class ColumnFamily {
     return new_value;
   };
 
-  static std::string Sum_UpdateCell_BE_Uint64(std::string const& existing_value,
+  static std::string SumUpdateCellBEUint64(std::string const& existing_value,
                                               std::string const& new_value) {
     return Uint64ToBigEndian(BigEndianToUint64(existing_value) +
                              BigEndianToUint64(new_value));
   };
 
-  static std::string Max_UpdateCell_BE_Uint64(std::string const& existing_value,
+  static std::string MaxUpdateCellBEUint64(std::string const& existing_value,
                                               std::string const& new_value) {
     auto existing_int = BigEndianToUint64(existing_value);
     auto new_int = BigEndianToUint64(new_value);
@@ -359,7 +359,7 @@ class ColumnFamily {
     return Uint64ToBigEndian(new_int);
   };
 
-  static std::string Min_UpdateCell_BE_Uint64(std::string const& existing_value,
+  static std::string MinUpdateCellBEUint64(std::string const& existing_value,
                                               std::string const& new_value) {
     auto existing_int = BigEndianToUint64(existing_value);
     auto new_int = BigEndianToUint64(new_value);
