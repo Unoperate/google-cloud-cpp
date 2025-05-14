@@ -380,13 +380,13 @@ ColumnFamily::ColumnFamily(
     auto aggregate_type = value_type_.value().aggregate_type();
     switch (aggregate_type.aggregator_case()) {
       case google::bigtable::admin::v2::Type::Aggregate::kSum:
-        UpdateCell_ = Sum_UpdateCell_BE_Uint64;
+        UpdateCell_ = SumUpdateCellBEUint64;
         break;
       case google::bigtable::admin::v2::Type::Aggregate::kMin:
-        UpdateCell_ = Min_UpdateCell_BE_Uint64;
+        UpdateCell_ = MinUpdateCellBEUint64;
         break;
       case google::bigtable::admin::v2::Type::Aggregate::kMax:
-        UpdateCell_ = Max_UpdateCell_BE_Uint64;
+        UpdateCell_ = MaxUpdateCellBEUint64;
         break;
       default:
         break;
