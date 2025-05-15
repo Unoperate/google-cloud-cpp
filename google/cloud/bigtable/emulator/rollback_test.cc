@@ -60,7 +60,7 @@ StatusOr<std::shared_ptr<Table>> CreateTable(
   return Table::Create(schema);
 }
 
-::google::bigtable::admin::v2::ColumnFamily make_BE_aggregate_cf_proto(
+::google::bigtable::admin::v2::ColumnFamily MakeBEAggregateCFProto(
     ::google::bigtable::admin::v2::Type_Aggregate::AggregatorCase aggregator) {
   ::google::bigtable::admin::v2::ColumnFamily column_family;
 
@@ -95,7 +95,7 @@ StatusOr<std::shared_ptr<Table>> CreateTable(
   return column_family;
 }
 
-::google::bigtable::admin::v2::Table create_schema(
+::google::bigtable::admin::v2::Table CreateSchema(
     std::string const& table_name,
     std::map<std::string, ::google::bigtable::admin::v2::ColumnFamily> const&
         column_families) {
@@ -363,73 +363,6 @@ TEST(TransactonRollback, ZeroOrNegativeTimestampHandling) {
   status = SetCells(table, table_name, row_key_2, v);
   ASSERT_NE(true, status.ok());
   ASSERT_FALSE(HasRow(table, column_family_name, row_key_2).ok());
-}
-
-Status has_column(
-    std::shared_ptr<google::cloud::bigtable::emulator::Table>& table,
-    std::string const& column_family, std::string const& row_key,
-    std::string const& column_qualifier) {
-  auto column_family_it = table->find(column_family);
-  if (column_family_it == table->end()) {
-    return NotFoundError(
-        "column family not found in table",
-        GCP_ERROR_INFO().WithMetadata("column family", column_family));
-  }
-
-  auto const& cf = column_family_it->second;
-  auto column_family_row_it = cf->find(row_key);
-  if (column_family_row_it == cf->end()) {
-    return NotFoundError(
-        "row key not found in column family",
-        GCP_ERROR_INFO()
-            .WithMetadata("row key", row_key)
-            .WithMetadata("column family", column_family));
-  }
-
-  auto& column_family_row = column_family_row_it->second;
-  auto column_row_it = column_family_row.find(column_qualifier);
-  if (column_row_it == column_family_row.end()) {
-    return NotFoundError(
-        "no column found with supplied qualifier",
-        GCP_ERROR_INFO().WithMetadata("column qualifier", column_qualifier));
-  }
-
-  return Status();
-}
-
-StatusOr<std::map<std::chrono::milliseconds, std::string>> get_column(
-    std::shared_ptr<google::cloud::bigtable::emulator::Table>& table,
-    std::string const& column_family, std::string const& row_key,
-    std::string const& column_qualifier) {
-  auto column_family_it = table->find(column_family);
-  if (column_family_it == table->end()) {
-    return NotFoundError(
-        "column family not found in table",
-        GCP_ERROR_INFO().WithMetadata("column family", column_family));
-  }
-
-  auto const& cf = column_family_it->second;
-  auto column_family_row_it = cf->find(row_key);
-  if (column_family_row_it == cf->end()) {
-    return NotFoundError(
-        "row key not found in column family",
-        GCP_ERROR_INFO()
-            .WithMetadata("row key", row_key)
-            .WithMetadata("column family", column_family));
-  }
-
-  auto& column_family_row = column_family_row_it->second;
-  auto column_row_it = column_family_row.find(column_qualifier);
-  if (column_row_it == column_family_row.end()) {
-    return NotFoundError(
-        "no column found with supplied qualifier",
-        GCP_ERROR_INFO().WithMetadata("column qualifier", column_qualifier));
-  }
-
-  std::map<std::chrono::milliseconds, std::string> ret(
-      column_row_it->second.begin(), column_row_it->second.end());
-
-  return ret;
 }
 
 // Does the SetCell mutation work to set a cell to a specific value?
@@ -951,7 +884,7 @@ TEST(TransactonRollback, AddToCellRejectsRequestsToNonAggregateColumnFamily) {
   auto const timestamp_micros = 1000;
 
   auto maybe_table = Table::Create(
-      create_schema(table_name, {{column_family_name, column_family}}));
+      CreateSchema(table_name, {{column_family_name, column_family}}));
 
   ASSERT_STATUS_OK(maybe_table);
   auto table = maybe_table.value();
@@ -986,9 +919,9 @@ TEST(TransactonRollback, AddToCellTestSum) {
   auto const* const column_qualifier = "column_qualifier";
   auto const timestamp_micros = 1000;
 
-  auto maybe_table = Table::Create(create_schema(
+  auto maybe_table = Table::Create(CreateSchema(
       table_name, {{column_family_name,
-                    make_BE_aggregate_cf_proto(
+                    MakeBEAggregateCFProto(
                         google::bigtable::admin::v2::Type::Aggregate::kSum)}}));
   ASSERT_STATUS_OK(maybe_table);
 
@@ -1047,9 +980,9 @@ TEST(TransactonRollback, AddToCellTestMax) {
   auto const* const column_qualifier = "column_qualifier";
   auto const timestamp_micros = 1000;
 
-  auto maybe_table = Table::Create(create_schema(
+  auto maybe_table = Table::Create(CreateSchema(
       table_name, {{column_family_name,
-                    make_BE_aggregate_cf_proto(
+                    MakeBEAggregateCFProto(
                         google::bigtable::admin::v2::Type::Aggregate::kMax)}}));
   ASSERT_STATUS_OK(maybe_table);
 
@@ -1097,9 +1030,9 @@ TEST(TransactonRollback, AddToCellTestMin) {
   auto const* const column_qualifier = "column_qualifier";
   auto const timestamp_micros = 1000;
 
-  auto maybe_table = Table::Create(create_schema(
+  auto maybe_table = Table::Create(CreateSchema(
       table_name, {{column_family_name,
-                    make_BE_aggregate_cf_proto(
+                    MakeBEAggregateCFProto(
                         google::bigtable::admin::v2::Type::Aggregate::kMin)}}));
   ASSERT_STATUS_OK(maybe_table);
 
