@@ -22,8 +22,8 @@
 #include "google/cloud/internal/make_status.h"
 #include "google/cloud/status.h"
 #include "google/protobuf/util/field_mask_util.h"
-#include <google/bigtable/admin/v2/types.pb.h>
 #include <grpc/grpc_security_constants.h>
+#include <google/bigtable/admin/v2/types.pb.h>
 #include <google/bigtable/v2/bigtable.pb.h>
 #include <google/bigtable/v2/data.pb.h>
 #include <absl/strings/match.h>
@@ -33,9 +33,9 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
-#include <optional>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <type_traits>
 
 namespace google {

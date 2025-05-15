@@ -19,9 +19,9 @@
 #include "google/cloud/bigtable/emulator/filter.h"
 #include "google/cloud/bigtable/emulator/filtered_map.h"
 #include "google/cloud/bigtable/emulator/range_set.h"
+#include "google/cloud/internal/big_endian.h"
 #include "absl/types/optional.h"
 #include <google/bigtable/admin/v2/table.pb.h>
-#include "google/cloud/internal/big_endian.h"
 #include <google/bigtable/v2/data.pb.h>
 #include <google/bigtable/v2/types.pb.h>
 #include <chrono>
@@ -200,7 +200,8 @@ class ColumnFamilyRow {
 class ColumnFamily {
  public:
   ColumnFamily() = default;
-  explicit ColumnFamily(absl::optional <google::bigtable::admin::v2::Type> value_type);
+  explicit ColumnFamily(
+      absl::optional<google::bigtable::admin::v2::Type> value_type);
   // Disable copying.
   ColumnFamily(ColumnFamily const&) = delete;
   ColumnFamily& operator=(ColumnFamily const&) = delete;
@@ -298,8 +299,7 @@ class ColumnFamily {
     return rows_.find(row_key);
   }
 
-  iterator erase(
-      std::map<std::string, ColumnFamilyRow>::iterator row_it) {
+  iterator erase(std::map<std::string, ColumnFamilyRow>::iterator row_it) {
     return rows_.erase(row_it);
   }
 
@@ -320,7 +320,7 @@ class ColumnFamily {
   };
 
   static std::string SumUpdateCellBEInt64(std::string const& existing_value,
-                                           std::string const& new_value) {
+                                          std::string const& new_value) {
     auto existing_value_int =
         google::cloud::internal::DecodeBigEndian<std::int64_t>(existing_value);
     if (!existing_value_int) {
@@ -338,7 +338,7 @@ class ColumnFamily {
   };
 
   static std::string MaxUpdateCellBEInt64(std::string const& existing_value,
-                                           std::string const& new_value) {
+                                          std::string const& new_value) {
     auto existing_int =
         google::cloud::internal::DecodeBigEndian<std::int64_t>(existing_value);
     if (!existing_int) {
@@ -358,7 +358,7 @@ class ColumnFamily {
   };
 
   static std::string MinUpdateCellBEInt64(std::string const& existing_value,
-                                           std::string const& new_value) {
+                                          std::string const& new_value) {
     auto existing_int =
         google::cloud::internal::DecodeBigEndian<std::int64_t>(existing_value);
     if (!existing_int) {

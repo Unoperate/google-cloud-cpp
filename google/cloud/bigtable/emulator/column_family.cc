@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "google/cloud/bigtable/emulator/column_family.h"
-#include <absl/types/optional.h>
 #include <google/bigtable/v2/types.pb.h>
+#include <absl/types/optional.h>
 #include <array>
 #include <chrono>
 #include <cstdint>
@@ -22,7 +22,6 @@
 #include <map>
 #include <string>
 #include <utility>
-#include <array>
 
 namespace google {
 namespace cloud {
@@ -139,7 +138,7 @@ absl::optional<std::string> ColumnFamily::SetCell(
   // definitely also need an InitializeCell_ function since some
   // aggregation types may require special treatment of an initial
   // value. However for now the aggregations that we support, Sum, Min
-  // and Max do not requre this.
+  // and Max do not require this.
 
   return rows_[row_key].SetCell(column_qualifier, timestamp, value);
 }
