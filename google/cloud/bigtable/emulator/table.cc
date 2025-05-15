@@ -144,6 +144,7 @@ StatusOr<btadmin::Table> Table::ModifyColumnFamilies(
                              GCP_ERROR_INFO().WithMetadata(
                                  "modification", modification.DebugString()));
       }
+
       using google::protobuf::util::FieldMaskUtil;
 
       using google::protobuf::util::FieldMaskUtil;
@@ -166,6 +167,18 @@ StatusOr<btadmin::Table> Table::ModifyColumnFamilies(
                                    "mask", effective_mask.DebugString()));
         }
       }
+
+      // Disallow the modification of the type of data stored in the
+      // column family (the aggregate type -- which is currently the
+      // only supported type -- can always be set during column family
+      // creation.
+      if (FieldMaskUtil::IsPathInFieldMask("value_type", effective_mask)) {
+        return InvalidArgumentError(
+            "The value_type cannot be changed after column family creation",
+            GCP_ERROR_INFO().WithMetadata("mask",
+                                          effective_mask.DebugString()));
+      }
+
       FieldMaskUtil::MergeMessageTo(modification.update(), effective_mask,
                                     FieldMaskUtil::MergeOptions(),
                                     &(cf_it->second));
