@@ -48,6 +48,18 @@ struct SetCellParams {
   std::string data;
 };
 
+StatusOr<std::shared_ptr<Table>> CreateTable(
+    std::string const& table_name, std::vector<std::string>& column_families) {
+  ::google::bigtable::admin::v2::Table schema;
+  schema.set_name(table_name);
+  for (auto& column_family_name : column_families) {
+    (*schema.mutable_column_families())[column_family_name] =
+        ::google::bigtable::admin::v2::ColumnFamily();
+  }
+
+  return Table::Create(schema);
+}
+
 ::google::bigtable::admin::v2::ColumnFamily MakeBEAggregateCFProto(
     ::google::bigtable::admin::v2::Type_Aggregate::AggregatorCase aggregator) {
   ::google::bigtable::admin::v2::ColumnFamily column_family;
@@ -162,11 +174,10 @@ Status SetCells(
   return table->MutateRow(mutation_request);
 }
 
-Status HasCell(
-    std::shared_ptr<google::cloud::bigtable::emulator::Table>& table,
-    std::string const& column_family, std::string const& row_key,
-    std::string const& column_qualifier, int64_t timestamp_micros,
-    std::string const& value) {
+Status HasCell(std::shared_ptr<google::cloud::bigtable::emulator::Table>& table,
+               std::string const& column_family, std::string const& row_key,
+               std::string const& column_qualifier, int64_t timestamp_micros,
+               std::string const& value) {
   auto column_family_it = table->find(column_family);
   if (column_family_it == table->end()) {
     return NotFoundError(
@@ -280,7 +291,7 @@ StatusOr<std::map<std::chrono::milliseconds, std::string>> GetColumn(
 }
 
 Status HasRow(std::shared_ptr<google::cloud::bigtable::emulator::Table>& table,
-               std::string const& column_family, std::string const& row_key) {
+              std::string const& column_family, std::string const& row_key) {
   auto column_family_it = table->find(column_family);
   if (column_family_it == table->end()) {
     return NotFoundError(
@@ -382,8 +393,8 @@ TEST(TransactonRollback, SetCellBasicFunction) {
 
   ASSERT_STATUS_OK(status);
 
-  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key,
-                            column_qualifier, timestamp_micros, data));
+  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key, column_qualifier,
+                           timestamp_micros, data));
 }
 
 // Test that an old value is correctly restored in a pre-populated
@@ -418,8 +429,8 @@ TEST(TransactonRollback, TestRestoreValue) {
   auto status = SetCells(table, table_name, row_key, v);
   ASSERT_STATUS_OK(status);
   ASSERT_STATUS_OK(HasCell(table, valid_column_family_name, row_key,
-                            column_qualifier, good_mutation_timestamp_micros,
-                            good_mutation_data));
+                           column_qualifier, good_mutation_timestamp_micros,
+                           good_mutation_data));
 
   // Now atomically try 2 mutations. One modifies the above set cell,
   // and the other one is expected to fail. The test is that
@@ -446,8 +457,8 @@ TEST(TransactonRollback, TestRestoreValue) {
   // RestoreValue and so should contain the old value, and not "new
   // data".
   ASSERT_STATUS_OK(HasCell(table, valid_column_family_name, row_key,
-                            column_qualifier, good_mutation_timestamp_micros,
-                            good_mutation_data));
+                           column_qualifier, good_mutation_timestamp_micros,
+                           good_mutation_data));
 }
 
 // Test that a new cell introduced in a chain of SetCell mutations is
@@ -477,8 +488,8 @@ TEST(TransactonRollback, DeleteValue) {
   auto status = SetCells(table, table_name, row_key, v);
   ASSERT_STATUS_OK(status);
   ASSERT_STATUS_OK(HasCell(table, valid_column_family_name, row_key,
-                            v[0].column_qualifier, v[0].timestamp_micros,
-                            v[0].data));
+                           v[0].column_qualifier, v[0].timestamp_micros,
+                           v[0].data));
 
   // We then setup a transaction chain with 2 SetCells, the first one
   // should succeed to add a new cell and the second one should fail
@@ -493,10 +504,10 @@ TEST(TransactonRollback, DeleteValue) {
   ASSERT_NE(status.ok(), true);  // We expect the chain of mutations to
                                  // fail altogether.
   status = HasCell(table, v[0].column_family_name, row_key,
-                    v[0].column_qualifier, v[0].timestamp_micros, v[0].data);
+                   v[0].column_qualifier, v[0].timestamp_micros, v[0].data);
   ASSERT_NE(status.ok(), true);  // Undo should delete the cell
   status = HasCell(table, v[1].column_family_name, row_key,
-                    v[1].column_qualifier, v[1].timestamp_micros, v[1].data);
+                   v[1].column_qualifier, v[1].timestamp_micros, v[1].data);
   ASSERT_NE(status.ok(), true);  // Also the SetCell with invalid shema
                                  // should not have set anything.
 }
@@ -530,8 +541,8 @@ TEST(TransactonRollback, DeleteColumn) {
   auto status = SetCells(table, table_name, row_key, v);
   ASSERT_STATUS_OK(status);
   ASSERT_STATUS_OK(HasCell(table, valid_column_family_name, row_key,
-                            v[0].column_qualifier, v[0].timestamp_micros,
-                            v[0].data));
+                           v[0].column_qualifier, v[0].timestamp_micros,
+                           v[0].data));
 
   // Introduce a new column in a chain of SetCell mutations, a
   // subsequent one of which must fail due to an invalid schema
@@ -549,8 +560,8 @@ TEST(TransactonRollback, DeleteColumn) {
   ASSERT_STATUS_OK(status);
 
   // Bit the new column introduced should have been rolled back.
-  status = HasColumn(table, v[0].column_family_name, row_key,
-                      v[0].column_qualifier);
+  status =
+      HasColumn(table, v[0].column_family_name, row_key, v[0].column_qualifier);
   ASSERT_NE(status.ok(), true);
 }
 
@@ -626,8 +637,8 @@ TEST(TransactonRollback, DeleteFromFamilyBasicFunction) {
 
   auto status = SetCells(table, table_name, row_key, v);
   ASSERT_STATUS_OK(status);
-  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key,
-                            column_qualifier, timestamp_micros, data));
+  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key, column_qualifier,
+                           timestamp_micros, data));
   ASSERT_STATUS_OK(
       HasColumn(table, column_family_name, row_key, column_qualifier));
   ASSERT_STATUS_OK(HasRow(table, column_family_name, row_key));
@@ -676,8 +687,8 @@ TEST(TransactonRollback, DeleteFromFamilyRollback) {
 
   auto status = SetCells(table, table_name, row_key, v);
   ASSERT_STATUS_OK(status);
-  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key,
-                            column_qualifier, timestamp_micros, data));
+  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key, column_qualifier,
+                           timestamp_micros, data));
   ASSERT_STATUS_OK(
       HasColumn(table, column_family_name, row_key, column_qualifier));
   ASSERT_STATUS_OK(HasRow(table, column_family_name, row_key));
@@ -690,20 +701,20 @@ TEST(TransactonRollback, DeleteFromFamilyRollback) {
   // above row should still exist and all its data should be intact.
   status =
       DeleteFromFamilies(table, table_name, row_key,
-                           {column_family_name, column_family_not_in_schema});
+                         {column_family_name, column_family_not_in_schema});
   ASSERT_NE(true, status.ok());  // The overall chain of mutations should fail.
 
   // Check that the row deleted by the first mutation is restored,
   // with all its data.
-  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key,
-                            column_qualifier, timestamp_micros, data));
+  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key, column_qualifier,
+                           timestamp_micros, data));
   ASSERT_STATUS_OK(
       HasColumn(table, column_family_name, row_key, column_qualifier));
   ASSERT_STATUS_OK(HasRow(table, column_family_name, row_key));
 }
 
 ::google::bigtable::v2::TimestampRange* NewTimestampRange(int64_t start,
-                                                            int64_t end) {
+                                                          int64_t end) {
   auto* range = new (::google::bigtable::v2::TimestampRange);
   range->set_start_timestamp_micros(start);
   range->set_end_timestamp_micros(end);
@@ -736,17 +747,16 @@ TEST(TransactonRollback, DeleteFromColumnBasicFunction) {
 
   auto status = SetCells(table, table_name, row_key, v);
   ASSERT_STATUS_OK(status);
-  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key,
-                            column_qualifier, 1000, data));
-  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key,
-                            column_qualifier, 2000, data));
-  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key,
-                            column_qualifier, 3000, data));
+  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key, column_qualifier,
+                           1000, data));
+  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key, column_qualifier,
+                           2000, data));
+  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key, column_qualifier,
+                           3000, data));
 
   std::vector<DeleteFromColumnParams> dv = {
       {column_family_name, column_qualifier,
-       NewTimestampRange(v[0].timestamp_micros,
-                           v[2].timestamp_micros + 1000)}};
+       NewTimestampRange(v[0].timestamp_micros, v[2].timestamp_micros + 1000)}};
 
   ASSERT_STATUS_OK(DeleteFromColumns(table, table_name, row_key, dv));
 
@@ -783,22 +793,20 @@ TEST(TransactonRollback, DeleteFromColumnRollback) {
 
   auto status = SetCells(table, table_name, row_key, v);
   ASSERT_STATUS_OK(status);
-  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key,
-                            column_qualifier, 1000, data));
-  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key,
-                            column_qualifier, 2000, data));
-  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key,
-                            column_qualifier, 3000, data));
+  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key, column_qualifier,
+                           1000, data));
+  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key, column_qualifier,
+                           2000, data));
+  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key, column_qualifier,
+                           3000, data));
 
   // The first mutation will succeed. The second assumes a schema that
   // does not exist - it should fail and cause rollback of the column
   // deletion in the first mutation.
   std::vector<DeleteFromColumnParams> dv = {
       {column_family_name, column_qualifier,
-       NewTimestampRange(v[0].timestamp_micros,
-                           v[2].timestamp_micros + 1000)},
-      {bad_column_family_name, column_qualifier,
-       NewTimestampRange(1000, 2000)},
+       NewTimestampRange(v[0].timestamp_micros, v[2].timestamp_micros + 1000)},
+      {bad_column_family_name, column_qualifier, NewTimestampRange(1000, 2000)},
   };
   // The mutation chains should fail and rollback should occur.
   ASSERT_EQ(false, DeleteFromColumns(table, table_name, row_key, dv).ok());
@@ -807,12 +815,12 @@ TEST(TransactonRollback, DeleteFromColumnRollback) {
   ASSERT_STATUS_OK(
       HasColumn(table, column_family_name, row_key, column_qualifier));
   // Check that the data is where and what we expect.
-  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key,
-                            column_qualifier, 1000, data));
-  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key,
-                            column_qualifier, 2000, data));
-  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key,
-                            column_qualifier, 3000, data));
+  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key, column_qualifier,
+                           1000, data));
+  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key, column_qualifier,
+                           2000, data));
+  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key, column_qualifier,
+                           3000, data));
 }
 
 // Can we delete a row from all column families?
@@ -849,8 +857,8 @@ TEST(TransactonRollback, DeleteFromRowBasicFunction) {
 
   auto status = SetCells(table, table_name, row_key, v);
   ASSERT_STATUS_OK(status);
-  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key,
-                            column_qualifier, timestamp_micros, data));
+  ASSERT_STATUS_OK(HasCell(table, column_family_name, row_key, column_qualifier,
+                           timestamp_micros, data));
   ASSERT_STATUS_OK(
       HasColumn(table, second_column_family_name, row_key, column_qualifier));
   ASSERT_STATUS_OK(HasRow(table, column_family_name, row_key));
@@ -863,11 +871,11 @@ TEST(TransactonRollback, DeleteFromRowBasicFunction) {
   mutation_request_mutation->mutable_delete_from_row();
 
   ASSERT_STATUS_OK(table->MutateRow(mutation_request));
-  ASSERT_EQ(false, HasCell(table, column_family_name, row_key,
-                            column_qualifier, timestamp_micros, data)
+  ASSERT_EQ(false, HasCell(table, column_family_name, row_key, column_qualifier,
+                           timestamp_micros, data)
                        .ok());
   ASSERT_EQ(false, HasColumn(table, second_column_family_name, row_key,
-                              column_qualifier)
+                             column_qualifier)
                        .ok());
 }
 
