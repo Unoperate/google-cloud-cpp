@@ -15,6 +15,7 @@
 #include "google/cloud/bigtable/emulator/column_family.h"
 #include "google/cloud/bigtable/emulator/row_streamer.h"
 #include "google/cloud/bigtable/emulator/table.h"
+#include "google/cloud/internal/big_endian.h"
 #include "google/cloud/internal/make_status.h"
 #include "google/cloud/status.h"
 #include "google/cloud/status_or.h"
@@ -947,14 +948,22 @@ TEST(TransactonRollback, AddToCellTestSum) {
 
   ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
   ASSERT_EQ(true, has_cell(table, column_family_name, row_key, column_qualifer,
-                           timestamp_micros, Uint64ToBigEndian(100))
+                           timestamp_micros,
+                           google::cloud::internal::EncodeBigEndian<std::int64_t>(100))
                       .ok());
 
   // Try and add 200
   mutable_input->set_int_value(200);
   ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
   ASSERT_EQ(true, has_cell(table, column_family_name, row_key, column_qualifer,
-                           timestamp_micros, Uint64ToBigEndian(300))
+                           timestamp_micros, google::cloud::internal::EncodeBigEndian<std::int64_t>(300))
+                      .ok());
+
+  // Try and subtract 50
+  mutable_input->set_int_value(-50);
+  ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
+  ASSERT_EQ(true, has_cell(table, column_family_name, row_key, column_qualifer,
+                           timestamp_micros, google::cloud::internal::EncodeBigEndian<std::int64_t>(250))
                       .ok());
 }
 
@@ -992,13 +1001,13 @@ TEST(TransactonRollback, AddToCellTestMax) {
 
   ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
   ASSERT_EQ(true, has_cell(table, column_family_name, row_key, column_qualifer,
-                           timestamp_micros, Uint64ToBigEndian(100))
+                           timestamp_micros, google::cloud::internal::EncodeBigEndian<std::int64_t>(100))
                       .ok());
 
   mutable_input->set_int_value(200);
   ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
   ASSERT_EQ(true, has_cell(table, column_family_name, row_key, column_qualifer,
-                           timestamp_micros, Uint64ToBigEndian(200))
+                           timestamp_micros, google::cloud::internal::EncodeBigEndian<std::int64_t>(200))
                       .ok());
 }
 
@@ -1036,13 +1045,13 @@ TEST(TransactonRollback, AddToCellTestMin) {
 
   ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
   ASSERT_EQ(true, has_cell(table, column_family_name, row_key, column_qualifer,
-                           timestamp_micros, Uint64ToBigEndian(100))
+                           timestamp_micros, google::cloud::internal::EncodeBigEndian<std::int64_t>(100))
                       .ok());
 
   mutable_input->set_int_value(50);
   ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
   ASSERT_EQ(true, has_cell(table, column_family_name, row_key, column_qualifer,
-                           timestamp_micros, Uint64ToBigEndian(50))
+                           timestamp_micros, google::cloud::internal::EncodeBigEndian<std::int64_t>(50))
                       .ok());
 }
 

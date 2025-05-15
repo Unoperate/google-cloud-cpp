@@ -21,6 +21,7 @@
 #include "google/cloud/bigtable/emulator/range_set.h"
 #include "absl/types/optional.h"
 #include <google/bigtable/admin/v2/table.pb.h>
+#include "google/cloud/internal/big_endian.h"
 #include <google/bigtable/v2/data.pb.h>
 #include <google/bigtable/v2/types.pb.h>
 #include <chrono>
@@ -37,9 +38,6 @@ struct Cell {
   std::chrono::milliseconds timestamp;
   std::string value;
 };
-
-uint64_t BigEndianToUint64(std::string const& s);
-std::string Uint64ToBigEndian(uint64_t i);
 
 /**
  * Objects of this class hold contents of a specific column in a specific row.
@@ -321,34 +319,62 @@ class ColumnFamily {
     return new_value;
   };
 
-  static std::string SumUpdateCellBEUint64(std::string const& existing_value,
-                                              std::string const& new_value) {
-    return Uint64ToBigEndian(BigEndianToUint64(existing_value) +
-                             BigEndianToUint64(new_value));
-  };
-
-  static std::string MaxUpdateCellBEUint64(std::string const& existing_value,
-                                              std::string const& new_value) {
-    auto existing_int = BigEndianToUint64(existing_value);
-    auto new_int = BigEndianToUint64(new_value);
-
-    if (existing_int > new_int) {
-      return Uint64ToBigEndian(existing_int);
+  static std::string SumUpdateCellBEInt64(std::string const& existing_value,
+                                           std::string const& new_value) {
+    auto existing_value_int =
+        google::cloud::internal::DecodeBigEndian<std::int64_t>(existing_value);
+    if (!existing_value_int) {
+      std::abort();
     }
 
-    return Uint64ToBigEndian(new_int);
-  };
-
-  static std::string MinUpdateCellBEUint64(std::string const& existing_value,
-                                              std::string const& new_value) {
-    auto existing_int = BigEndianToUint64(existing_value);
-    auto new_int = BigEndianToUint64(new_value);
-
-    if (existing_int < new_int) {
-      return Uint64ToBigEndian(existing_int);
+    auto new_value_int =
+        google::cloud::internal::DecodeBigEndian<std::int64_t>(new_value);
+    if (!new_value_int) {
+      std::abort();
     }
 
-    return Uint64ToBigEndian(new_int);
+    return google::cloud::internal::EncodeBigEndian(existing_value_int.value() +
+                                                    new_value_int.value());
+  };
+
+  static std::string MaxUpdateCellBEInt64(std::string const& existing_value,
+                                           std::string const& new_value) {
+    auto existing_int =
+        google::cloud::internal::DecodeBigEndian<std::int64_t>(existing_value);
+    if (!existing_int) {
+      std::abort();
+    }
+    auto new_int =
+        google::cloud::internal::DecodeBigEndian<std::int64_t>(new_value);
+    if (!new_int) {
+      std::abort();
+    }
+
+    if (existing_int.value() > new_int.value()) {
+      return google::cloud::internal::EncodeBigEndian(existing_int.value());
+    }
+
+    return google::cloud::internal::EncodeBigEndian(new_int.value());
+  };
+
+  static std::string MinUpdateCellBEInt64(std::string const& existing_value,
+                                           std::string const& new_value) {
+    auto existing_int =
+        google::cloud::internal::DecodeBigEndian<std::int64_t>(existing_value);
+    if (!existing_int) {
+      std::abort();
+    }
+    auto new_int =
+        google::cloud::internal::DecodeBigEndian<std::int64_t>(new_value);
+    if (!new_int) {
+      std::abort();
+    }
+
+    if (existing_int.value() < new_int.value()) {
+      return google::cloud::internal::EncodeBigEndian(existing_int.value());
+    }
+
+    return google::cloud::internal::EncodeBigEndian(new_int.value());
   };
 
   std::function<std::string(std::string const&, std::string const&)>

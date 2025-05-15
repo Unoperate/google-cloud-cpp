@@ -29,40 +29,6 @@ namespace cloud {
 namespace bigtable {
 namespace emulator {
 
-uint64_t BigEndianToUint64(std::string const& s) {
-  if (s.length() != 8) {
-    std::abort();  // We expect to be called with a  8 byte string in big-endian
-                   // encoding only.
-  }
-  auto const* u_bytes = reinterpret_cast<uint8_t const*>(s.c_str());
-
-  return static_cast<uint64_t>(u_bytes[7]) |
-         static_cast<uint64_t>(u_bytes[6]) << 8 |
-         static_cast<uint64_t>(u_bytes[5]) << 16 |
-         static_cast<uint64_t>(u_bytes[4]) << 24 |
-         static_cast<uint64_t>(u_bytes[3]) << 32 |
-         static_cast<uint64_t>(u_bytes[2]) << 40 |
-         static_cast<uint64_t>(u_bytes[1]) << 48 |
-         static_cast<uint64_t>(u_bytes[0]) << 56;
-}
-
-std::string Uint64ToBigEndian(uint64_t i) {
-  std::array<uint8_t, 8> u_bytes;
-
-  u_bytes[0] = static_cast<uint8_t>(i >> 56);
-  u_bytes[1] = static_cast<uint8_t>(i >> 48);
-  u_bytes[2] = static_cast<uint8_t>(i >> 40);
-  u_bytes[3] = static_cast<uint8_t>(i >> 32);
-  u_bytes[4] = static_cast<uint8_t>(i >> 24);
-  u_bytes[5] = static_cast<uint8_t>(i >> 16);
-  u_bytes[6] = static_cast<uint8_t>(i >> 8);
-  u_bytes[7] = static_cast<uint8_t>(i);
-
-  std::string ret(std::begin(u_bytes), std::end(u_bytes));
-
-  return ret;
-}
-
 absl::optional<std::string> ColumnRow::SetCell(
     std::chrono::milliseconds timestamp, std::string const& value) {
   if (timestamp <= std::chrono::milliseconds::zero()) {
@@ -380,13 +346,13 @@ ColumnFamily::ColumnFamily(
     auto aggregate_type = value_type_.value().aggregate_type();
     switch (aggregate_type.aggregator_case()) {
       case google::bigtable::admin::v2::Type::Aggregate::kSum:
-        UpdateCell_ = SumUpdateCellBEUint64;
+        UpdateCell_ = SumUpdateCellBEInt64;
         break;
       case google::bigtable::admin::v2::Type::Aggregate::kMin:
-        UpdateCell_ = MinUpdateCellBEUint64;
+        UpdateCell_ = MinUpdateCellBEInt64;
         break;
       case google::bigtable::admin::v2::Type::Aggregate::kMax:
-        UpdateCell_ = MaxUpdateCellBEUint64;
+        UpdateCell_ = MaxUpdateCellBEInt64;
         break;
       default:
         break;
