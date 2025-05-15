@@ -80,7 +80,7 @@ Status has_cell(
   return Status();
 }
 
-Status set_cells(
+Status SetCells(
     std::shared_ptr<google::cloud::bigtable::emulator::Table>& table,
     std::string const& table_name, std::string const& row_key,
     std::vector<SetCellParams>& set_cell_params) {
@@ -136,7 +136,7 @@ TEST(ConditionalMutations, TestTrueMutations) {
 
   std::vector<SetCellParams> v = {
       {column_family_name, "column_2", 1000, "some_value"}};
-  ASSERT_STATUS_OK(set_cells(table, table_name, row_key, v));
+  ASSERT_STATUS_OK(SetCells(table, table_name, row_key, v));
   ASSERT_STATUS_OK(has_cell(table, v[0].column_family_name, row_key,
                             v[0].column_qualifier, v[0].timestamp_micros,
                             v[0].data));
