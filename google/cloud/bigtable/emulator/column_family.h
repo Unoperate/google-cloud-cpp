@@ -19,13 +19,17 @@
 #include "google/cloud/bigtable/emulator/filter.h"
 #include "google/cloud/bigtable/emulator/filtered_map.h"
 #include "google/cloud/bigtable/emulator/range_set.h"
+#include "google/cloud/internal/big_endian.h"
+#include "google/cloud/internal/make_status.h"
 #include "absl/types/optional.h"
 #include <google/bigtable/admin/v2/table.pb.h>
 #include <google/bigtable/v2/data.pb.h>
 #include <google/bigtable/v2/types.pb.h>
+#include <absl/strings/str_format.h>
 #include <chrono>
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <optional>
 
 namespace google {
@@ -37,9 +41,6 @@ struct Cell {
   std::chrono::milliseconds timestamp;
   std::string value;
 };
-
-uint64_t BigEndianToUint64(std::string const& s);
-std::string Uint64ToBigEndian(uint64_t i);
 
 /**
  * Objects of this class hold contents of a specific column in a specific row.
@@ -190,6 +191,7 @@ class ColumnFamilyRow {
   std::map<std::string, ColumnRow> columns_;
 };
 
+
 /**
  * Objects of this class hold contents of a column family indexed by rows.
  *
@@ -202,7 +204,13 @@ class ColumnFamilyRow {
 class ColumnFamily {
  public:
   ColumnFamily() = default;
-  explicit ColumnFamily(absl::optional <google::bigtable::admin::v2::Type> value_type);
+  // ConstructAggregateColumnFamily can be used to return an aggregate
+  // ColumnFamily that can support AddToCell or MergeToCell and
+  // similar aggregate complex types. To construct an ordinary
+  // ColumnFamily, use the default constructor ColumnFamily().
+  friend StatusOr<std::shared_ptr<ColumnFamily>> ConstructAggregateColumnFamily(
+      google::bigtable::admin::v2::Type value_type);
+
   // Disable copying.
   ColumnFamily(ColumnFamily const&) = delete;
   ColumnFamily& operator=(ColumnFamily const&) = delete;
@@ -300,8 +308,7 @@ class ColumnFamily {
     return rows_.find(row_key);
   }
 
-  iterator erase(
-      std::map<std::string, ColumnFamilyRow>::iterator row_it) {
+  iterator erase(std::map<std::string, ColumnFamilyRow>::iterator row_it) {
     return rows_.erase(row_it);
   }
 
@@ -321,39 +328,70 @@ class ColumnFamily {
     return new_value;
   };
 
-  static std::string SumUpdateCellBEUint64(std::string const& existing_value,
-                                              std::string const& new_value) {
-    return Uint64ToBigEndian(BigEndianToUint64(existing_value) +
-                             BigEndianToUint64(new_value));
-  };
-
-  static std::string MaxUpdateCellBEUint64(std::string const& existing_value,
-                                              std::string const& new_value) {
-    auto existing_int = BigEndianToUint64(existing_value);
-    auto new_int = BigEndianToUint64(new_value);
-
-    if (existing_int > new_int) {
-      return Uint64ToBigEndian(existing_int);
+  static std::string SumUpdateCellBEInt64(std::string const& existing_value,
+                                          std::string const& new_value) {
+    auto existing_value_int =
+        google::cloud::internal::DecodeBigEndian<std::int64_t>(existing_value);
+    if (!existing_value_int) {
+      std::abort();
     }
 
-    return Uint64ToBigEndian(new_int);
-  };
-
-  static std::string MinUpdateCellBEUint64(std::string const& existing_value,
-                                              std::string const& new_value) {
-    auto existing_int = BigEndianToUint64(existing_value);
-    auto new_int = BigEndianToUint64(new_value);
-
-    if (existing_int < new_int) {
-      return Uint64ToBigEndian(existing_int);
+    auto new_value_int =
+        google::cloud::internal::DecodeBigEndian<std::int64_t>(new_value);
+    if (!new_value_int) {
+      std::abort();
     }
 
-    return Uint64ToBigEndian(new_int);
+    return google::cloud::internal::EncodeBigEndian(existing_value_int.value() +
+                                                    new_value_int.value());
+  };
+
+  static std::string MaxUpdateCellBEInt64(std::string const& existing_value,
+                                          std::string const& new_value) {
+    auto existing_int =
+        google::cloud::internal::DecodeBigEndian<std::int64_t>(existing_value);
+    if (!existing_int) {
+      std::abort();
+    }
+    auto new_int =
+        google::cloud::internal::DecodeBigEndian<std::int64_t>(new_value);
+    if (!new_int) {
+      std::abort();
+    }
+
+    if (existing_int.value() > new_int.value()) {
+      return google::cloud::internal::EncodeBigEndian(existing_int.value());
+    }
+
+    return google::cloud::internal::EncodeBigEndian(new_int.value());
+  };
+
+  static std::string MinUpdateCellBEInt64(std::string const& existing_value,
+                                          std::string const& new_value) {
+    auto existing_int =
+        google::cloud::internal::DecodeBigEndian<std::int64_t>(existing_value);
+    if (!existing_int) {
+      std::abort();
+    }
+    auto new_int =
+        google::cloud::internal::DecodeBigEndian<std::int64_t>(new_value);
+    if (!new_int) {
+      std::abort();
+    }
+
+    if (existing_int.value() < new_int.value()) {
+      return google::cloud::internal::EncodeBigEndian(existing_int.value());
+    }
+
+    return google::cloud::internal::EncodeBigEndian(new_int.value());
   };
 
   std::function<std::string(std::string const&, std::string const&)>
       UpdateCell_ = DefaultUpdateCell;
 };
+
+StatusOr<std::shared_ptr<ColumnFamily>> ConstructAggregateColumnFamily(
+    google::bigtable::admin::v2::Type value_type);
 
 /**
  * A stream of cells which allows for filtering unwanted ones.
