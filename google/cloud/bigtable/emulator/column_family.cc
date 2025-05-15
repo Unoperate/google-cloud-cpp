@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "google/cloud/bigtable/emulator/column_family.h"
-#include <absl/types/optional.h>
 #include <google/bigtable/v2/types.pb.h>
+#include <absl/types/optional.h>
 #include <array>
 #include <chrono>
 #include <cstdint>
@@ -22,46 +22,11 @@
 #include <map>
 #include <string>
 #include <utility>
-#include <array>
 
 namespace google {
 namespace cloud {
 namespace bigtable {
 namespace emulator {
-
-uint64_t BigEndianToUint64(std::string const& s) {
-  if (s.length() != 8) {
-    std::abort();  // We expect to be called with a  8 byte string in big-endian
-                   // encoding only.
-  }
-  auto const* u_bytes = reinterpret_cast<uint8_t const*>(s.c_str());
-
-  return static_cast<uint64_t>(u_bytes[7]) |
-         static_cast<uint64_t>(u_bytes[6]) << 8 |
-         static_cast<uint64_t>(u_bytes[5]) << 16 |
-         static_cast<uint64_t>(u_bytes[4]) << 24 |
-         static_cast<uint64_t>(u_bytes[3]) << 32 |
-         static_cast<uint64_t>(u_bytes[2]) << 40 |
-         static_cast<uint64_t>(u_bytes[1]) << 48 |
-         static_cast<uint64_t>(u_bytes[0]) << 56;
-}
-
-std::string Uint64ToBigEndian(uint64_t i) {
-  std::array<uint8_t, 8> u_bytes;
-
-  u_bytes[0] = static_cast<uint8_t>(i >> 56);
-  u_bytes[1] = static_cast<uint8_t>(i >> 48);
-  u_bytes[2] = static_cast<uint8_t>(i >> 40);
-  u_bytes[3] = static_cast<uint8_t>(i >> 32);
-  u_bytes[4] = static_cast<uint8_t>(i >> 24);
-  u_bytes[5] = static_cast<uint8_t>(i >> 16);
-  u_bytes[6] = static_cast<uint8_t>(i >> 8);
-  u_bytes[7] = static_cast<uint8_t>(i);
-
-  std::string ret(std::begin(u_bytes), std::end(u_bytes));
-
-  return ret;
-}
 
 absl::optional<std::string> ColumnRow::SetCell(
     std::chrono::milliseconds timestamp, std::string const& value) {
@@ -173,7 +138,7 @@ absl::optional<std::string> ColumnFamily::SetCell(
   // definitely also need an InitializeCell_ function since some
   // aggregation types may require special treatment of an initial
   // value. However for now the aggregations that we support, Sum, Min
-  // and Max do not requre this.
+  // and Max do not require this.
 
   return rows_[row_key].SetCell(column_qualifier, timestamp, value);
 }
@@ -360,38 +325,40 @@ bool FilteredColumnFamilyStream::PointToFirstCellAfterRowChange() const {
   return false;
 }
 
-ColumnFamily::ColumnFamily(
-    absl::optional<google::bigtable::admin::v2::Type> value_type) {
-  value_type_ = std::move(value_type);
+StatusOr<std::shared_ptr<ColumnFamily>> ConstructAggregateColumnFamily(
+    google::bigtable::admin::v2::Type value_type) {
+  auto cf = std::make_shared<ColumnFamily>();
 
-  if (!value_type_.has_value()) {
-    return;
-  }
-
-  // FIXME: We currently only support big-endian uint64
-  // encoding. Check that the intent matches that as well (big-endian
-  // encoding in so-called ordered mode that supports only
-  // non-negative integers). However, the mutation code such as the one
-  // for AddCell will check this as well and reject mutations with
-  // encoding we don't support or negative numbers.
-  if (value_type_.value().has_aggregate_type()) {
-    auto aggregate_type = value_type_.value().aggregate_type();
+  if (value_type.has_aggregate_type()) {
+    auto const& aggregate_type = value_type.aggregate_type();
     switch (aggregate_type.aggregator_case()) {
       case google::bigtable::admin::v2::Type::Aggregate::kSum:
-        UpdateCell_ = SumUpdateCellBEUint64;
+        cf->UpdateCell_ = cf->SumUpdateCellBEInt64;
         break;
       case google::bigtable::admin::v2::Type::Aggregate::kMin:
-        UpdateCell_ = MinUpdateCellBEUint64;
+        cf->UpdateCell_ = cf->MinUpdateCellBEInt64;
         break;
       case google::bigtable::admin::v2::Type::Aggregate::kMax:
-        UpdateCell_ = MaxUpdateCellBEUint64;
+        cf->UpdateCell_ = cf->MaxUpdateCellBEInt64;
         break;
       default:
-        break;
+        return InvalidArgumentError(
+            "unsupported aggregation type",
+            GCP_ERROR_INFO().WithMetadata(
+                "aggregation case",
+                absl::StrFormat("%d", aggregate_type.aggregator_case())));
     }
-  }
-};
 
+    cf->value_type_ = std::move(value_type);
+
+    return cf;
+  }
+
+  return InvalidArgumentError(
+      "no aggregate type set in the supplied value_type",
+      GCP_ERROR_INFO().WithMetadata("supplied value type",
+                                    value_type.DebugString()));
+}
 }  // namespace emulator
 }  // namespace bigtable
 }  // namespace cloud

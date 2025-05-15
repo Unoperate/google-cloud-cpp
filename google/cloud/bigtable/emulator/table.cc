@@ -18,10 +18,12 @@
 #include "google/cloud/bigtable/emulator/filtered_map.h"
 #include "google/cloud/bigtable/emulator/range_set.h"
 #include "google/cloud/bigtable/internal/google_bytes_traits.h"
+#include "google/cloud/internal/big_endian.h"
 #include "google/cloud/internal/make_status.h"
 #include "google/cloud/status.h"
 #include "google/protobuf/util/field_mask_util.h"
 #include <grpc/grpc_security_constants.h>
+#include <google/bigtable/admin/v2/types.pb.h>
 #include <google/bigtable/v2/bigtable.pb.h>
 #include <google/bigtable/admin/v2/types.pb.h>
 #include <google/bigtable/v2/data.pb.h>
@@ -85,17 +87,26 @@ Status Table::Construct(google::bigtable::admin::v2::Table schema) {
         "`automated_backup_policy` not empty.",
         GCP_ERROR_INFO().WithMetadata("schema", schema_.DebugString()));
   }
+
   for (auto const& column_family_def : schema_.column_families()) {
     absl::optional<google::bigtable::admin::v2::Type> opt_value_type =
         absl::nullopt;
 
-    // Support for complex types (Add_To_Cell aggregations, e.t.c.).
+    // Support for complex types (AddToCell aggregations, e.t.c.).
     if (column_family_def.second.has_value_type()) {
       opt_value_type = column_family_def.second.value_type();
     }
 
-    column_families_.emplace(column_family_def.first,
-                             std::make_shared<ColumnFamily>(opt_value_type));
+    if (opt_value_type.has_value()) {
+      auto cf = ConstructAggregateColumnFamily(opt_value_type.value());
+      if (!cf) {
+        return cf.status();
+      }
+      column_families_.emplace(column_family_def.first, cf.value());
+    } else {
+      column_families_.emplace(column_family_def.first,
+                             std::make_shared<ColumnFamily>());
+    }
   }
 
   return Status();
@@ -563,12 +574,11 @@ Status RowTransaction::AddToCell(
   auto cf_value_type = cf.GetValueType();
   if (!cf_value_type.has_value() ||
       !cf_value_type.value().has_aggregate_type()) {
-    return Status(
-        StatusCode::kInvalidArgument,
-        absl::StrFormat(
-            "column family %s is not configured to contain aggregation cells "
-            "or aggregation type not properly configured",
-            add_to_cell.family_name()));
+    return InvalidArgumentError(
+        "column family is not configured to contain aggregation cells or "
+        "aggregation type not properly configured",
+        GCP_ERROR_INFO().WithMetadata("column family",
+                                      add_to_cell.family_name()));
   }
 
   // Ensure that we support the aggregation that is configured in the
@@ -579,37 +589,39 @@ Status RowTransaction::AddToCell(
     case google::bigtable::admin::v2::Type::Aggregate::kMax:
       break;
     default:
-      return Status(
-          StatusCode::kUnimplemented,
-          absl::StrFormat(
-              "column family %s configured with unimplemented aggregation",
-              add_to_cell.family_name()));
+      return UnimplementedError(
+          "column family configured with unimplemented aggregation",
+          GCP_ERROR_INFO()
+              .WithMetadata("column family", add_to_cell.family_name())
+              .WithMetadata("configured aggregation",
+                            absl::StrFormat("%d", cf_value_type.value()
+                                                      .aggregate_type()
+                                                      .aggregator_case())));
   }
 
   if (!add_to_cell.has_input()) {
-    return Status(StatusCode::kInvalidArgument,
-                  absl::StrFormat("input value not set"));
+    return InvalidArgumentError(
+        "input not set",
+        GCP_ERROR_INFO().WithMetadata("mutation", add_to_cell.DebugString()));
   }
 
   switch (add_to_cell.input().kind_case()) {
     case google::bigtable::v2::Value::kIntValue:
-      if (!add_to_cell.input().has_int_value() ||
-          add_to_cell.input().int_value() < 0) {
-        return Status(
-            StatusCode::kInvalidArgument,
-            absl::StrFormat(
-                "no integer input value or negative integer input value"));
+      if (!add_to_cell.input().has_int_value()) {
+        return InvalidArgumentError("input value not set",
+                                    GCP_ERROR_INFO().WithMetadata(
+                                        "mutation", add_to_cell.DebugString()));
       }
       break;
     default:
-      return Status(
-          StatusCode::kInvalidArgument,
-          absl::StrFormat("only non-negative int64 values are supported"));
+      return InvalidArgumentError(
+          "only int64 values are supported",
+          GCP_ERROR_INFO().WithMetadata("mutation", add_to_cell.DebugString()));
   }
 
-  auto uint64_input = static_cast<uint64_t>(add_to_cell.input().int_value());
-  auto value = Uint64ToBigEndian(uint64_input);
-  auto row_key = request_.row_key();
+  auto int64_input = add_to_cell.input().int_value();
+  auto value = google::cloud::internal::EncodeBigEndian(int64_input);
+  auto row_key = row_key_;
   auto ts_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::microseconds(
           add_to_cell.timestamp().raw_timestamp_micros()));

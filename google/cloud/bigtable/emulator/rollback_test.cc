@@ -15,6 +15,7 @@
 #include "google/cloud/bigtable/emulator/column_family.h"
 #include "google/cloud/bigtable/emulator/row_streamer.h"
 #include "google/cloud/bigtable/emulator/table.h"
+#include "google/cloud/internal/big_endian.h"
 #include "google/cloud/internal/make_status.h"
 #include "google/cloud/status.h"
 #include "google/cloud/status_or.h"
@@ -60,8 +61,7 @@ StatusOr<std::shared_ptr<Table>> CreateTable(
 }
 
 ::google::bigtable::admin::v2::ColumnFamily make_BE_aggregate_cf_proto(
-     ::google::bigtable::admin::v2::Type_Aggregate::AggregatorCase aggregator) {
-
+    ::google::bigtable::admin::v2::Type_Aggregate::AggregatorCase aggregator) {
   ::google::bigtable::admin::v2::ColumnFamily column_family;
 
   auto* value_type = column_family.mutable_value_type();
@@ -87,7 +87,7 @@ StatusOr<std::shared_ptr<Table>> CreateTable(
 
   // What do we do about the state_type?
   // FIXME: Is this correct?
-  auto *state_type = kind_aggregate_type->mutable_state_type();
+  auto* state_type = kind_aggregate_type->mutable_state_type();
   int64_type = state_type->mutable_int64_type();
   encoding = int64_type->mutable_encoding();
   encoding->mutable_big_endian_bytes();
@@ -379,7 +379,7 @@ Status has_column(
   auto const& cf = column_family_it->second;
   auto column_family_row_it = cf->find(row_key);
   if (column_family_row_it == cf->end()) {
-    return internal::NotFoundError(
+    return NotFoundError(
         "row key not found in column family",
         GCP_ERROR_INFO()
             .WithMetadata("row key", row_key)
@@ -947,7 +947,7 @@ TEST(TransactonRollback, AddToCellRejectsRequestsToNonAggregateColumnFamily) {
   auto const* const table_name = "projects/test/instances/test/tables/test";
   auto const* const row_key = "0";
   auto const* const column_family_name = "column_family_1";
-  auto const* const column_qualifer = "column_qualifier";
+  auto const* const column_qualifier = "column_qualifier";
   auto const timestamp_micros = 1000;
 
   auto maybe_table = Table::Create(
@@ -964,9 +964,9 @@ TEST(TransactonRollback, AddToCellRejectsRequestsToNonAggregateColumnFamily) {
   auto* add_to_cell_mutation = mutation_request_mutation->mutable_add_to_cell();
 
   add_to_cell_mutation->set_family_name(column_family_name);
-  auto* mutable_column_qualifer =
+  auto* mutable_column_qualifier =
       add_to_cell_mutation->mutable_column_qualifier();
-  mutable_column_qualifer->set_raw_value(column_qualifer);
+  mutable_column_qualifier->set_raw_value(column_qualifier);
   auto* mutable_timestamp = add_to_cell_mutation->mutable_timestamp();
   mutable_timestamp->set_raw_timestamp_micros(timestamp_micros);
   auto* mutable_input = add_to_cell_mutation->mutable_input();
@@ -983,7 +983,7 @@ TEST(TransactonRollback, AddToCellTestSum) {
   auto const* const table_name = "projects/test/instances/test/tables/test";
   auto const* const row_key = "0";
   auto const* const column_family_name = "column_family_1";
-  auto const* const column_qualifer = "column_qualifier";
+  auto const* const column_qualifier = "column_qualifier";
   auto const timestamp_micros = 1000;
 
   auto maybe_table = Table::Create(create_schema(
@@ -1002,25 +1002,41 @@ TEST(TransactonRollback, AddToCellTestSum) {
   auto* add_to_cell_mutation = mutation_request_mutation->mutable_add_to_cell();
 
   add_to_cell_mutation->set_family_name(column_family_name);
-  auto* mutable_column_qualifer =
+  auto* mutable_column_qualifier =
       add_to_cell_mutation->mutable_column_qualifier();
-  mutable_column_qualifer->set_raw_value(column_qualifer);
+  mutable_column_qualifier->set_raw_value(column_qualifier);
   auto* mutable_timestamp = add_to_cell_mutation->mutable_timestamp();
   mutable_timestamp->set_raw_timestamp_micros(timestamp_micros);
   auto* mutable_input = add_to_cell_mutation->mutable_input();
   mutable_input->set_int_value(100);
 
   ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
-  ASSERT_EQ(true, HasCell(table, column_family_name, row_key, column_qualifer,
-                           timestamp_micros, Uint64ToBigEndian(100))
-                      .ok());
+  ASSERT_EQ(
+      true,
+      HasCell(table, column_family_name, row_key, column_qualifier,
+               timestamp_micros,
+               google::cloud::internal::EncodeBigEndian<std::int64_t>(100))
+          .ok());
 
   // Try and add 200
   mutable_input->set_int_value(200);
   ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
-  ASSERT_EQ(true, HasCell(table, column_family_name, row_key, column_qualifer,
-                           timestamp_micros, Uint64ToBigEndian(300))
-                      .ok());
+  ASSERT_EQ(
+      true,
+      HasCell(table, column_family_name, row_key, column_qualifier,
+               timestamp_micros,
+               google::cloud::internal::EncodeBigEndian<std::int64_t>(300))
+          .ok());
+
+  // Try and subtract 50
+  mutable_input->set_int_value(-50);
+  ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
+  ASSERT_EQ(
+      true,
+      HasCell(table, column_family_name, row_key, column_qualifier,
+               timestamp_micros,
+               google::cloud::internal::EncodeBigEndian<std::int64_t>(250))
+          .ok());
 }
 
 // Test basic functionality of AddToCell Max aggregation.
@@ -1028,7 +1044,7 @@ TEST(TransactonRollback, AddToCellTestMax) {
   auto const* const table_name = "projects/test/instances/test/tables/test";
   auto const* const row_key = "0";
   auto const* const column_family_name = "column_family_1";
-  auto const* const column_qualifer = "column_qualifier";
+  auto const* const column_qualifier = "column_qualifier";
   auto const timestamp_micros = 1000;
 
   auto maybe_table = Table::Create(create_schema(
@@ -1047,24 +1063,30 @@ TEST(TransactonRollback, AddToCellTestMax) {
   auto* add_to_cell_mutation = mutation_request_mutation->mutable_add_to_cell();
 
   add_to_cell_mutation->set_family_name(column_family_name);
-  auto* mutable_column_qualifer =
+  auto* mutable_column_qualifier =
       add_to_cell_mutation->mutable_column_qualifier();
-  mutable_column_qualifer->set_raw_value(column_qualifer);
+  mutable_column_qualifier->set_raw_value(column_qualifier);
   auto* mutable_timestamp = add_to_cell_mutation->mutable_timestamp();
   mutable_timestamp->set_raw_timestamp_micros(timestamp_micros);
   auto* mutable_input = add_to_cell_mutation->mutable_input();
   mutable_input->set_int_value(100);
 
   ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
-  ASSERT_EQ(true, HasCell(table, column_family_name, row_key, column_qualifer,
-                           timestamp_micros, Uint64ToBigEndian(100))
-                      .ok());
+  ASSERT_EQ(
+      true,
+      HasCell(table, column_family_name, row_key, column_qualifier,
+               timestamp_micros,
+               google::cloud::internal::EncodeBigEndian<std::int64_t>(100))
+          .ok());
 
   mutable_input->set_int_value(200);
   ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
-  ASSERT_EQ(true, HasCell(table, column_family_name, row_key, column_qualifer,
-                           timestamp_micros, Uint64ToBigEndian(200))
-                      .ok());
+  ASSERT_EQ(
+      true,
+      HasCell(table, column_family_name, row_key, column_qualifier,
+               timestamp_micros,
+               google::cloud::internal::EncodeBigEndian<std::int64_t>(200))
+          .ok());
 }
 
 // Test basic functionality of AddToCell Min aggregation.
@@ -1072,7 +1094,7 @@ TEST(TransactonRollback, AddToCellTestMin) {
   auto const* const table_name = "projects/test/instances/test/tables/test";
   auto const* const row_key = "0";
   auto const* const column_family_name = "column_family_1";
-  auto const* const column_qualifer = "column_qualifier";
+  auto const* const column_qualifier = "column_qualifier";
   auto const timestamp_micros = 1000;
 
   auto maybe_table = Table::Create(create_schema(
@@ -1091,27 +1113,30 @@ TEST(TransactonRollback, AddToCellTestMin) {
   auto* add_to_cell_mutation = mutation_request_mutation->mutable_add_to_cell();
 
   add_to_cell_mutation->set_family_name(column_family_name);
-  auto* mutable_column_qualifer =
+  auto* mutable_column_qualifier =
       add_to_cell_mutation->mutable_column_qualifier();
-  mutable_column_qualifer->set_raw_value(column_qualifer);
+  mutable_column_qualifier->set_raw_value(column_qualifier);
   auto* mutable_timestamp = add_to_cell_mutation->mutable_timestamp();
   mutable_timestamp->set_raw_timestamp_micros(timestamp_micros);
   auto* mutable_input = add_to_cell_mutation->mutable_input();
   mutable_input->set_int_value(100);
 
   ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
-  ASSERT_EQ(true, HasCell(table, column_family_name, row_key, column_qualifer,
-                           timestamp_micros, Uint64ToBigEndian(100))
-                      .ok());
+  ASSERT_EQ(
+      true,
+      HasCell(table, column_family_name, row_key, column_qualifier,
+               timestamp_micros,
+               google::cloud::internal::EncodeBigEndian<std::int64_t>(100))
+          .ok());
 
   mutable_input->set_int_value(50);
   ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
-  ASSERT_EQ(true, HasCell(table, column_family_name, row_key, column_qualifer,
-                           timestamp_micros, Uint64ToBigEndian(50))
-                      .ok());
+  ASSERT_EQ(true,
+            HasCell(table, column_family_name, row_key, column_qualifier,
+                     timestamp_micros,
+                     google::cloud::internal::EncodeBigEndian<std::int64_t>(50))
+                .ok());
 }
-
-
 
 }  // namespace emulator
 }  // namespace bigtable
