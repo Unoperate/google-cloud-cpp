@@ -191,7 +191,6 @@ class ColumnFamilyRow {
   std::map<std::string, ColumnRow> columns_;
 };
 
-
 /**
  * Objects of this class hold contents of a column family indexed by rows.
  *

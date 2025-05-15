@@ -104,7 +104,7 @@ Status Table::Construct(google::bigtable::admin::v2::Table schema) {
       column_families_.emplace(column_family_def.first, cf.value());
     } else {
       column_families_.emplace(column_family_def.first,
-                             std::make_shared<ColumnFamily>());
+                               std::make_shared<ColumnFamily>());
     }
   }
 
@@ -170,9 +170,19 @@ StatusOr<btadmin::Table> Table::ModifyColumnFamilies(
                                     FieldMaskUtil::MergeOptions(),
                                     &(cf_it->second));
     } else if (modification.has_create()) {
-      if (!new_column_families
-               .emplace(modification.id(), std::make_shared<ColumnFamily>())
-               .second) {
+      std::shared_ptr<ColumnFamily> cf;
+      // Have we been asked to create an aggregate column family?
+      if (modification.create().has_value_type()) {
+        auto value_type = modification.create().value_type();
+        auto maybe_cf = ConstructAggregateColumnFamily(value_type);
+        if (!maybe_cf) {
+          return maybe_cf.status();
+        }
+        cf = maybe_cf.value();
+      } else {
+        cf = std::make_shared<ColumnFamily>();
+      }
+      if (!new_column_families.emplace(modification.id(), cf).second) {
         return AlreadyExistsError(
             "Column family already exists.",
             GCP_ERROR_INFO().WithMetadata("modification",
