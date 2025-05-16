@@ -237,11 +237,10 @@ Status HasColumn(
   auto const& cf = column_family_it->second;
   auto column_family_row_it = cf->find(row_key);
   if (column_family_row_it == cf->end()) {
-    return NotFoundError(
-        "row key not found in column family",
-        GCP_ERROR_INFO()
-            .WithMetadata("row key", row_key)
-            .WithMetadata("column family", column_family));
+    return NotFoundError("row key not found in column family",
+                         GCP_ERROR_INFO()
+                             .WithMetadata("row key", row_key)
+                             .WithMetadata("column family", column_family));
   }
 
   auto& column_family_row = column_family_row_it->second;
@@ -269,11 +268,10 @@ StatusOr<std::map<std::chrono::milliseconds, std::string>> GetColumn(
   auto const& cf = column_family_it->second;
   auto column_family_row_it = cf->find(row_key);
   if (column_family_row_it == cf->end()) {
-    return NotFoundError(
-        "row key not found in column family",
-        GCP_ERROR_INFO()
-            .WithMetadata("row key", row_key)
-            .WithMetadata("column family", column_family));
+    return NotFoundError("row key not found in column family",
+                         GCP_ERROR_INFO()
+                             .WithMetadata("row key", row_key)
+                             .WithMetadata("column family", column_family));
   }
 
   auto& column_family_row = column_family_row_it->second;
@@ -944,32 +942,29 @@ TEST(TransactonRollback, AddToCellTestSum) {
   mutable_input->set_int_value(100);
 
   ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
-  ASSERT_EQ(
-      true,
-      HasCell(table, column_family_name, row_key, column_qualifier,
-               timestamp_micros,
-               google::cloud::internal::EncodeBigEndian<std::int64_t>(100))
-          .ok());
+  ASSERT_EQ(true,
+            HasCell(table, column_family_name, row_key, column_qualifier,
+                    timestamp_micros,
+                    google::cloud::internal::EncodeBigEndian<std::int64_t>(100))
+                .ok());
 
   // Try and add 200
   mutable_input->set_int_value(200);
   ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
-  ASSERT_EQ(
-      true,
-      HasCell(table, column_family_name, row_key, column_qualifier,
-               timestamp_micros,
-               google::cloud::internal::EncodeBigEndian<std::int64_t>(300))
-          .ok());
+  ASSERT_EQ(true,
+            HasCell(table, column_family_name, row_key, column_qualifier,
+                    timestamp_micros,
+                    google::cloud::internal::EncodeBigEndian<std::int64_t>(300))
+                .ok());
 
   // Try and subtract 50
   mutable_input->set_int_value(-50);
   ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
-  ASSERT_EQ(
-      true,
-      HasCell(table, column_family_name, row_key, column_qualifier,
-               timestamp_micros,
-               google::cloud::internal::EncodeBigEndian<std::int64_t>(250))
-          .ok());
+  ASSERT_EQ(true,
+            HasCell(table, column_family_name, row_key, column_qualifier,
+                    timestamp_micros,
+                    google::cloud::internal::EncodeBigEndian<std::int64_t>(250))
+                .ok());
 }
 
 // Test basic functionality of AddToCell Max aggregation.
@@ -1005,21 +1000,19 @@ TEST(TransactonRollback, AddToCellTestMax) {
   mutable_input->set_int_value(100);
 
   ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
-  ASSERT_EQ(
-      true,
-      HasCell(table, column_family_name, row_key, column_qualifier,
-               timestamp_micros,
-               google::cloud::internal::EncodeBigEndian<std::int64_t>(100))
-          .ok());
+  ASSERT_EQ(true,
+            HasCell(table, column_family_name, row_key, column_qualifier,
+                    timestamp_micros,
+                    google::cloud::internal::EncodeBigEndian<std::int64_t>(100))
+                .ok());
 
   mutable_input->set_int_value(200);
   ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
-  ASSERT_EQ(
-      true,
-      HasCell(table, column_family_name, row_key, column_qualifier,
-               timestamp_micros,
-               google::cloud::internal::EncodeBigEndian<std::int64_t>(200))
-          .ok());
+  ASSERT_EQ(true,
+            HasCell(table, column_family_name, row_key, column_qualifier,
+                    timestamp_micros,
+                    google::cloud::internal::EncodeBigEndian<std::int64_t>(200))
+                .ok());
 }
 
 // Test basic functionality of AddToCell Min aggregation.
@@ -1055,19 +1048,18 @@ TEST(TransactonRollback, AddToCellTestMin) {
   mutable_input->set_int_value(100);
 
   ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
-  ASSERT_EQ(
-      true,
-      HasCell(table, column_family_name, row_key, column_qualifier,
-               timestamp_micros,
-               google::cloud::internal::EncodeBigEndian<std::int64_t>(100))
-          .ok());
+  ASSERT_EQ(true,
+            HasCell(table, column_family_name, row_key, column_qualifier,
+                    timestamp_micros,
+                    google::cloud::internal::EncodeBigEndian<std::int64_t>(100))
+                .ok());
 
   mutable_input->set_int_value(50);
   ASSERT_EQ(true, table->MutateRow(mutation_request).ok());
   ASSERT_EQ(true,
             HasCell(table, column_family_name, row_key, column_qualifier,
-                     timestamp_micros,
-                     google::cloud::internal::EncodeBigEndian<std::int64_t>(50))
+                    timestamp_micros,
+                    google::cloud::internal::EncodeBigEndian<std::int64_t>(50))
                 .ok());
 }
 
