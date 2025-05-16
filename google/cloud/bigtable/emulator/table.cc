@@ -172,7 +172,7 @@ StatusOr<btadmin::Table> Table::ModifyColumnFamilies(
       // Disallow the modification of the type of data stored in the
       // column family (the aggregate type -- which is currently the
       // only supported type -- can always be set during column family
-      // creation.
+      // creation).
       if (FieldMaskUtil::IsPathInFieldMask("value_type", effective_mask)) {
         return InvalidArgumentError(
             "The value_type cannot be changed after column family creation",
