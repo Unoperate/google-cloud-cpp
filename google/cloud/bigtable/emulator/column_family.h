@@ -110,26 +110,6 @@ class ColumnRow {
     cells_.erase(timestamp_it);
   }
 
-  std::map<std::chrono::milliseconds, std::string>::iterator find(
-      std::chrono::milliseconds const& timestamp) {
-    return cells_.find(timestamp);
-  }
-
-  void erase(
-      std::map<std::chrono::milliseconds, std::string>::iterator timestamp_it) {
-    cells_.erase(timestamp_it);
-  }
-
-  std::map<std::chrono::milliseconds, std::string>::iterator find(
-      std::chrono::milliseconds const& timestamp) {
-    return cells_.find(timestamp);
-  }
-
-  void erase(
-      std::map<std::chrono::milliseconds, std::string>::iterator timestamp_it) {
-    cells_.erase(timestamp_it);
-  }
-
  private:
   std::map<std::chrono::milliseconds, std::string> cells_;
 };
