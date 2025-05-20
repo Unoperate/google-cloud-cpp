@@ -1516,24 +1516,24 @@ TEST_F(FilterWorkTest, LatestCellsPerColumnLimit) {
   RowFilter filter;
   filter.set_cells_per_column_limit_filter(1);
 
+  // TODO(prawilny): expand this test case - ensure correct next() return value.
   std::vector<TestCell> cells{
       TestCell{"r1", "cf1", "q", 0_ms, "v"},
       TestCell{"r1", "cf2", "q", 0_ms, "v"},
       TestCell{"r2", "cf", "q1", 0_ms, "v"},
       TestCell{"r2", "cf", "q2", 0_ms, "v"},
-      TestCell{"r3", "cf", "q", 1_ms, "v"},
       TestCell{"r3", "cf", "q", 2_ms, "v"},
+      TestCell{"r3", "cf", "q", 1_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(cells, filter);
   ASSERT_STATUS_OK(maybe_output);
 
-  // TODO(prawilny): revisit after fixing ordering of cells within streams.
-  GTEST_SKIP() << "invalid timestamp ordering";
-
-  ASSERT_EQ(3, maybe_output->size());
-  EXPECT_EQ(cells[1], maybe_output->at(0));
-  EXPECT_EQ(cells[3], maybe_output->at(1));
-  EXPECT_EQ(cells[5], maybe_output->at(2));
+  ASSERT_EQ(5, maybe_output->size());
+  EXPECT_EQ(cells[0], maybe_output->at(0));
+  EXPECT_EQ(cells[1], maybe_output->at(1));
+  EXPECT_EQ(cells[2], maybe_output->at(2));
+  EXPECT_EQ(cells[3], maybe_output->at(3));
+  EXPECT_EQ(cells[4], maybe_output->at(4));
 }
 
 TEST_F(FilterWorkTest, TimestampRange) {
@@ -1827,12 +1827,12 @@ TEST_F(FilterWorkTest, ConditionBranchFilterNextDifferentThanCell) {
   auto maybe_output = GetFilterOutput(cells, filter);
   ASSERT_STATUS_OK(maybe_output);
 
-  std::vector<TestCell> expected {
-    TestCell{"r1", "cf", "q", 1_ms, "t", "TRUE"},
-    TestCell{"r2", "cf", "q", 1_ms, "f", "TRUE"},
-    TestCell{"r3", "cf1", "q2", 1_ms, "f", "FALSE"},
-    TestCell{"r3", "cf3", "q2", 3_ms, "f", "FALSE"},
-    TestCell{"r4", "cf", "q", 1_ms, "t", "TRUE"},
+  std::vector<TestCell> expected{
+      TestCell{"r1", "cf", "q", 1_ms, "t", "TRUE"},
+      TestCell{"r2", "cf", "q", 1_ms, "f", "TRUE"},
+      TestCell{"r3", "cf1", "q2", 1_ms, "f", "FALSE"},
+      TestCell{"r3", "cf3", "q2", 3_ms, "f", "FALSE"},
+      TestCell{"r4", "cf", "q", 1_ms, "t", "TRUE"},
   };
   EXPECT_EQ(expected, *maybe_output);
 }
