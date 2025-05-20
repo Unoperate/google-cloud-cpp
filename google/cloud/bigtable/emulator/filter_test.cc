@@ -1008,6 +1008,13 @@ TEST_F(FilterApplicationPropagation, BlockAll) {
   }
 }
 
+TEST_F(FilterApplicationPropagation, Sink) {
+  RowFilter filter;
+  filter.set_sink(true);
+
+  TestPropagation(filter, 0);
+}
+
 TEST_F(FilterApplicationPropagation, RowKeyRegex) {
   RowFilter filter;
   filter.set_row_key_regex_filter("foo.*");
@@ -1123,9 +1130,6 @@ TEST_F(FilterApplicationPropagation, InterleaveAllSupport) {
 
   TestPropagation(filter, 0);
 }
-
-// TODO(prawilny): add sink (maybe only as a child of chain if it cannot be a
-// top-level filter)
 
 TEST_F(FilterApplicationPropagation, Condition) {
   RowFilter filter;
