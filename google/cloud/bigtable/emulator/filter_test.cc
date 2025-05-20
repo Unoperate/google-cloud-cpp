@@ -98,7 +98,6 @@ class TestCell {
   }
 
   bool operator==(TestCell const& other) const {
-    // TODO(prawilny): is it legal?
     return operator==(other.AsCellView()) && label_ == other.label_;
   }
 
@@ -144,51 +143,6 @@ TEST(CellStream, NextColumnNotSupportedNoMoreData) {
 }
 
 TEST(CellStream, NextColumnNotSupported) {
-  std::vector<TestCell> cells{
-      TestCell{"row1", "cf1", "col1", 0_ms, "val1"},
-      TestCell{"row1", "cf1", "col1", 1_ms, "val2"},
-      TestCell{"row1", "cf1", "col2", 0_ms, "val3"},  // column changed
-      TestCell{"row1", "cf1", "col2", 1_ms, "val4"},
-      TestCell{"row1", "cf2", "col2", 0_ms, "val5"},  // column family changed
-      TestCell{"row1", "cf2", "col2", 1_ms, "val6"},
-      TestCell{"row2", "cf2", "col2", 0_ms, "val7"},  // row changed
-      TestCell{"row2", "cf2", "col2", 1_ms, "val8"}};
-  auto cur_cell = cells.begin();
-
-  auto mock_impl = std::make_unique<MockStream>();
-  EXPECT_CALL(*mock_impl, Next(NextMode::kColumn))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*mock_impl, Value).WillRepeatedly([&]() -> CellView const& {
-    return cur_cell->AsCellView();
-  });
-  EXPECT_CALL(*mock_impl, HasValue).WillRepeatedly([&] {
-    return cur_cell != cells.end();
-  });
-  EXPECT_CALL(*mock_impl, Next(NextMode::kCell)).WillRepeatedly([&] {
-    ++cur_cell;
-    return true;
-  });
-
-  CellStream cell_stream(std::move(mock_impl));
-
-  cell_stream.Next(NextMode::kColumn);
-  ASSERT_TRUE(cell_stream.HasValue());
-  EXPECT_EQ(cells[2], cell_stream.Value());
-
-  cell_stream.Next(NextMode::kColumn);
-  ASSERT_TRUE(cell_stream.HasValue());
-  EXPECT_EQ(cells[4], cell_stream.Value());
-
-  cell_stream.Next(NextMode::kColumn);
-  ASSERT_TRUE(cell_stream.HasValue());
-  EXPECT_EQ(cells[6], cell_stream.Value());
-
-  cell_stream.Next(NextMode::kColumn);
-  ASSERT_FALSE(cell_stream.HasValue());
-}
-
-// TODO(prawilny): remove this test, it's the same as the previous one.
-TEST(CellStream, NextRowNotSupported) {
   std::vector<TestCell> cells{
       TestCell{"row1", "cf1", "col1", 0_ms, "val1"},
       TestCell{"row1", "cf1", "col1", 1_ms, "val2"},
