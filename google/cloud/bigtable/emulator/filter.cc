@@ -156,8 +156,6 @@ class CellsPerColumnFilter {
   }
 
  private:
-  // TODO(prawilny): Needed to avoid returning multiple cells with only
-  // differing timestamps.
   class Prev {
    public:
     explicit Prev(CellView const& cell_view)
@@ -382,7 +380,6 @@ bool MergeCellStreams::CellStreamGreater::operator()(
   if (col_cmp != 0) {
     return col_cmp > 0;
   }
-  // TODO(prawilny): invert this condition?
   return (*lhs)->timestamp() > (*rhs)->timestamp();
 }
 
@@ -520,8 +517,6 @@ class ConditionStream : public AbstractCellStreamImpl {
       source_.ApplyFilter(internal_filter);
       predicate_stream_.ApplyFilter(internal_filter);
     }
-    // TODO(prawilny): rewrite it to be res_true, res_false and return &&
-    // explicitly - there's no short circuiting here.
     res = true_stream_.ApplyFilter(internal_filter) && res;
     res = false_stream_.ApplyFilter(internal_filter) && res;
     return res;
@@ -1059,8 +1054,8 @@ StatusOr<CellStreamConstructor> CreateFilterImpl(
           "`condition` must have `true_filter` or `false_filter` set.",
           GCP_ERROR_INFO().WithMetadata("filter", filter.DebugString()));
     }
-    // TODO(prawilny): validate that `sink` is not present in condition's
-    // predicate.
+    // FIXME: validate that `sink` is not present in condition's predicate.
+    // Expected error:
     //  INVALID_ARGUMENT: Error in field 'condition filter predicate' : sink
     //  cannot be nested in a condition filter
 
@@ -1107,8 +1102,6 @@ StatusOr<CellStreamConstructor> CreateFilterImpl(
         };
     return res;
   }
-  // TODO(prawilny): check if sink can be a top-level filter and/or what error
-  // message we should return.
   return UnimplementedError(
       "Unsupported filter.",
       GCP_ERROR_INFO().WithMetadata("filter", filter.DebugString()));
