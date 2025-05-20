@@ -11,7 +11,7 @@ buildtest:
     make -C {{ BUILD_DIR }} -j`nproc`
 
 test:
-    for f in {{ BUILD_DIR }}/google/cloud/bigtable/emulator/*_test ; do echo === $f ===; $f || break ; done
+    for f in {{ BUILD_DIR }}/google/cloud/bigtable/emulator/*_test ; do echo === $f ===; $f || true ; done
 
 clangtidy:
     ./ci/cloudbuild/build.sh -t clang-tidy-ci
