@@ -44,9 +44,13 @@ absl::optional<std::string> ColumnRow::SetCell(
 std::vector<Cell> ColumnRow::DeleteTimeRange(
     ::google::bigtable::v2::TimestampRange const& time_range) {
   std::vector<Cell> deleted_cells;
-  for (auto cell_it =
+  absl::optional<int64_t> maybe_end_micros = time_range.end_timestamp_micros();
+  if (maybe_end_micros.value_or(0) == 0) {
+    maybe_end_micros.reset();
+  }
+  for (auto cell_it = maybe_end_micros ?
            upper_bound(std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::microseconds(time_range.end_timestamp_micros())));
+               std::chrono::microseconds(*maybe_end_micros))) : begin();
        cell_it != cells_.end() &&
        cell_it->first >= std::chrono::duration_cast<std::chrono::milliseconds>(
                              std::chrono::microseconds(
