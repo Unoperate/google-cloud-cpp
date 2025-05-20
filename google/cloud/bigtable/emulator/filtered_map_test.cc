@@ -46,21 +46,21 @@ std::vector<std::string> Vec(std::initializer_list<char const*> const& v) {
   return res;
 }
 
-TEST(RangeFilteredMapView, NoFilter) {
+TEST(StringRangeFilteredMapView, NoFilter) {
   std::map<std::string, int> unfiltered{{"zero", 0}, {"one", 1}, {"two", 2}};
   auto filter = StringRangeSet::All();
   StringRangeFilteredMapView<decltype(unfiltered)> filtered(unfiltered, filter);
   EXPECT_EQ(Vec({"zero", "one", "two"}), Keys(filtered));
 }
 
-TEST(RangeFilteredMapView, EmptyFilter) {
+TEST(StringRangeFilteredMapView, EmptyFilter) {
   std::map<std::string, int> unfiltered{{"zero", 0}, {"one", 1}, {"two", 2}};
   auto filter = StringRangeSet::Empty();
   StringRangeFilteredMapView<decltype(unfiltered)> filtered(unfiltered, filter);
   EXPECT_EQ(Vec({}), Keys(filtered));
 }
 
-TEST(RangeFilteredMapView, OneOpen) {
+TEST(StringRangeFilteredMapView, OneOpen) {
   std::map<std::string, int> unfiltered{{"AA", 0},   {"AAA", 0}, {"AAAa", 0},
                                         {"AAAb", 0}, {"AAB", 0}, {"AAC", 0}};
   auto filter = StringRangeSet::Empty();
@@ -69,7 +69,7 @@ TEST(RangeFilteredMapView, OneOpen) {
   EXPECT_EQ(Vec({"AAAa", "AAAb"}), Keys(filtered));
 }
 
-TEST(RangeFilteredMapView, OneClosed) {
+TEST(StringRangeFilteredMapView, OneClosed) {
   std::map<std::string, int> unfiltered{{"AA", 0},   {"AAA", 0}, {"AAAa", 0},
                                         {"AAAb", 0}, {"AAB", 0}, {"AAC", 0}};
   auto filter = StringRangeSet::Empty();
@@ -78,7 +78,7 @@ TEST(RangeFilteredMapView, OneClosed) {
   EXPECT_EQ(Vec({"AAA", "AAAa", "AAAb", "AAB"}), Keys(filtered));
 }
 
-TEST(RangeFilteredMapView, NoEntriesAfterClosedFilter) {
+TEST(StringRangeFilteredMapView, NoEntriesAfterClosedFilter) {
   std::map<std::string, int> unfiltered{
       {"AA", 0}, {"AAA", 0}, {"AAAa", 0}, {"AAAb", 0}};
   auto filter = StringRangeSet::Empty();
@@ -87,7 +87,7 @@ TEST(RangeFilteredMapView, NoEntriesAfterClosedFilter) {
   EXPECT_EQ(Vec({"AAA", "AAAa", "AAAb"}), Keys(filtered));
 }
 
-TEST(RangeFilteredMapView, NoEntriesAfterOpenFilter) {
+TEST(StringRangeFilteredMapView, NoEntriesAfterOpenFilter) {
   std::map<std::string, int> unfiltered{
       {"AA", 0}, {"AAA", 0}, {"AAAa", 0}, {"AAAb", 0}};
   auto filter = StringRangeSet::Empty();
@@ -96,7 +96,7 @@ TEST(RangeFilteredMapView, NoEntriesAfterOpenFilter) {
   EXPECT_EQ(Vec({"AAAa", "AAAb"}), Keys(filtered));
 }
 
-TEST(RangeFilteredMapView, NoEntriesBeforeClosedFilter) {
+TEST(StringRangeFilteredMapView, NoEntriesBeforeClosedFilter) {
   std::map<std::string, int> unfiltered{
       {"AAA", 0}, {"AAAa", 0}, {"AAAb", 0}, {"AAB", 0}, {"AAC", 0}};
   auto filter = StringRangeSet::Empty();
@@ -105,7 +105,7 @@ TEST(RangeFilteredMapView, NoEntriesBeforeClosedFilter) {
   EXPECT_EQ(Vec({"AAA", "AAAa", "AAAb", "AAB"}), Keys(filtered));
 }
 
-TEST(RangeFilteredMapView, NoEntriesBeforeOpenFilter) {
+TEST(StringRangeFilteredMapView, NoEntriesBeforeOpenFilter) {
   std::map<std::string, int> unfiltered{
       {"AAAa", 0}, {"AAAb", 0}, {"AAB", 0}, {"AAC", 0}};
   auto filter = StringRangeSet::Empty();
@@ -114,7 +114,7 @@ TEST(RangeFilteredMapView, NoEntriesBeforeOpenFilter) {
   EXPECT_EQ(Vec({"AAAa", "AAAb"}), Keys(filtered));
 }
 
-TEST(RangeFilteredMapView, MultipleFilters) {
+TEST(StringRangeFilteredMapView, MultipleFilters) {
   std::map<std::string, int> unfiltered{
       {"AA", 0},   {"AAA", 0}, {"AAAa", 0}, {"AAAb", 0}, {"AAB", 0},
       {"AAC", 0},  {"BB", 0},  {"BBB", 0},  {"BBBb", 0}, {"CCCa", 0},
