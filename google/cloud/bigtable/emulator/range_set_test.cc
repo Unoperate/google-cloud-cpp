@@ -688,10 +688,10 @@ TEST(StringRangeSet, SingleRange) {
             *srs.disjoint_ranges().begin());
 }
 
-std::set<TimestampRangeSet::Range, TimestampRangeSet::Range::EndGreater>
+std::set<TimestampRangeSet::Range, TimestampRangeSet::Range::StartLess>
 TSRanges(std::vector<std::pair<std::chrono::milliseconds,
                                std::chrono::milliseconds>> const& ranges) {
-  std::set<TimestampRangeSet::Range, TimestampRangeSet::Range::EndGreater> res;
+  std::set<TimestampRangeSet::Range, TimestampRangeSet::Range::StartLess> res;
   std::transform(ranges.begin(), ranges.end(), std::inserter(res, res.begin()),
                  [](std::pair<std::chrono::milliseconds,
                               std::chrono::milliseconds> const& range) {

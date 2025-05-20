@@ -179,10 +179,6 @@ class TimestampRangeSet {
       bool operator()(Range const& lhs, Range const& rhs) const;
     };
 
-    struct EndGreater {
-      bool operator()(Range const& lhs, Range const& rhs) const;
-    };
-
    private:
     Value start_;
     Value end_;
@@ -193,12 +189,12 @@ class TimestampRangeSet {
   void Sum(Range inserted_range);
   void Intersect(Range const& intersected_range);
 
-  std::set<Range, Range::EndGreater> const& disjoint_ranges() const {
+  std::set<Range, Range::StartLess> const& disjoint_ranges() const {
     return disjoint_ranges_;
   };
 
  private:
-  std::set<Range, Range::EndGreater> disjoint_ranges_;
+  std::set<Range, Range::StartLess> disjoint_ranges_;
 };
 
 bool operator==(TimestampRangeSet::Range const& lhs,

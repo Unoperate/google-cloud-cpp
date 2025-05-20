@@ -186,8 +186,8 @@ class TimestampRangeFilteredMapView {
         TimestampRangeFilteredMapView const& parent,
         typename Map::const_iterator unfiltered_pos,
         typename std::set<typename TimestampRangeSet::Range,
-                          typename TimestampRangeSet::Range::EndGreater>::
-            const_iterator filter_pos)
+                          typename TimestampRangeSet::Range::StartLess>::
+            const_reverse_iterator filter_pos)
         : parent_(std::cref(parent)),
           unfiltered_pos_(std::move(unfiltered_pos)),
           filter_pos_(std::move(filter_pos)) {
@@ -221,7 +221,7 @@ class TimestampRangeFilteredMapView {
    private:
     // Adjust `unfiltered_pos_` after we transition to a different range.
     void AdvanceToNextRange() {
-      if (filter_pos_ == parent_.get().filter_.get().disjoint_ranges().end()) {
+      if (filter_pos_ == parent_.get().filter_.get().disjoint_ranges().crend()) {
         // We've reached the end.
         unfiltered_pos_ = parent_.get().unfiltered_.get().end();
         return;
@@ -246,7 +246,7 @@ class TimestampRangeFilteredMapView {
       // reaches its end.
       while (unfiltered_pos_ != parent_.get().unfiltered_.get().end() &&
              filter_pos_ !=
-                 parent_.get().filter_.get().disjoint_ranges().end() &&
+                 parent_.get().filter_.get().disjoint_ranges().crend() &&
              filter_pos_->IsBelowStart(unfiltered_pos_->first)) {
         ++filter_pos_;
         AdvanceToNextRange();
@@ -256,8 +256,8 @@ class TimestampRangeFilteredMapView {
     std::reference_wrapper<TimestampRangeFilteredMapView const> parent_;
     typename Map::const_iterator unfiltered_pos_;
     typename std::set<typename TimestampRangeSet::Range,
-                      typename TimestampRangeSet::Range::EndGreater>::
-        const_iterator filter_pos_;
+                      typename TimestampRangeSet::Range::StartLess>::
+        const_reverse_iterator filter_pos_;
   };
 
   /**
@@ -277,11 +277,11 @@ class TimestampRangeFilteredMapView {
 
   const_iterator begin() const {
     return const_iterator(*this, unfiltered_.get().begin(),
-                          filter_.get().disjoint_ranges().begin());
+                          filter_.get().disjoint_ranges().crbegin());
   }
   const_iterator end() const {
     return const_iterator(*this, unfiltered_.get().end(),
-                          filter_.get().disjoint_ranges().end());
+                          filter_.get().disjoint_ranges().crend());
   }
 
  private:
