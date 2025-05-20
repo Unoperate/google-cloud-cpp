@@ -30,12 +30,8 @@ namespace emulator {
 
 absl::optional<std::string> ColumnRow::SetCell(
     std::chrono::milliseconds timestamp, std::string const& value) {
-  if (timestamp <= std::chrono::milliseconds::zero()) {
-    timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch());
-  }
-
   absl::optional<std::string> ret = absl::nullopt;
+
   auto cell_it = cells_.find(timestamp);
   if (!(cell_it == cells_.end())) {
     ret = std::move(cell_it->second);
@@ -44,6 +40,24 @@ absl::optional<std::string> ColumnRow::SetCell(
   cells_[timestamp] = value;
 
   return ret;
+}
+
+absl::optional<std::string> ColumnRow::SetCell(
+    std::chrono::milliseconds timestamp, std::string const& value,
+    std::function<std::string(std::string const&, std::string const&)> const&
+        update_cell_fn) {
+  absl::optional<std::string> ret = absl::nullopt;
+
+  auto cell_it = cells_.find(timestamp);
+  if (!(cell_it == cells_.end())) {
+    ret = std::move(cell_it->second);
+    cells_[timestamp] = update_cell_fn(ret.value(), value);
+    return ret;
+  }
+
+  cells_[timestamp] = value;
+
+  return absl::nullopt;
 }
 
 std::vector<Cell> ColumnRow::DeleteTimeRange(
@@ -84,6 +98,15 @@ absl::optional<std::string> ColumnFamilyRow::SetCell(
   return columns_[column_qualifier].SetCell(timestamp, value);
 }
 
+absl::optional<std::string> ColumnFamilyRow::SetCell(
+      std::string const& column_qualifier, std::chrono::milliseconds timestamp,
+      std::string const& value,
+      std::function<std::string(std::string const&, std::string const&)> const&
+      update_cell_fn) {
+
+  return columns_[column_qualifier].SetCell(timestamp, value, update_cell_fn);
+}
+
 std::vector<Cell> ColumnFamilyRow::DeleteColumn(
     std::string const& column_qualifier,
     ::google::bigtable::v2::TimestampRange const& time_range) {
@@ -116,31 +139,21 @@ absl::optional<Cell> ColumnFamilyRow::DeleteTimeStamp(
 absl::optional<std::string> ColumnFamily::SetCell(
     std::string const& row_key, std::string const& column_qualifier,
     std::chrono::milliseconds timestamp, std::string const& value) {
-  // To support complex types (e.g. aggregations), check if a cell
-  // with the timestamp already exists. If it does, derive a new value
-  // to set by calling UpdateCell_ with the existing and new values.
-  std::string update_value;
-  auto column_family_row_it = find(row_key);
-  if (column_family_row_it != end()) {
-    auto column_it = column_family_row_it->second.find(column_qualifier);
-    if (column_it != column_family_row_it->second.end()) {
-      auto column_row_it = column_it->second.find(timestamp);
-      if (column_row_it != column_it->second.end()) {
-        // We are updating an existing cell
-        update_value = UpdateCell_(column_row_it->second, value);
-        return rows_[row_key].SetCell(column_qualifier, timestamp,
-                                      update_value);
-      }
-    }
-  }
+  return rows_[row_key].SetCell(column_qualifier, timestamp, value);
+}
 
+absl::optional<std::string> ColumnFamily::SetCell(
+    std::string const& row_key, std::string const& column_qualifier,
+    std::chrono::milliseconds timestamp, std::string const& value,
+    std::function<std::string(std::string const&, std::string const&)> const&
+        update_cell_fn) {
   // FIXME: Also to support aggregation of complex types, we
   // definitely also need an InitializeCell_ function since some
   // aggregation types may require special treatment of an initial
   // value. However for now the aggregations that we support, Sum, Min
   // and Max do not require this.
-
-  return rows_[row_key].SetCell(column_qualifier, timestamp, value);
+  return rows_[row_key].SetCell(column_qualifier, timestamp, value,
+                                update_cell_fn);
 }
 
 std::map<std::string, std::vector<Cell>> ColumnFamily::DeleteRow(

@@ -68,6 +68,19 @@ class ColumnRow {
    */
   absl::optional<std::string> SetCell(std::chrono::milliseconds timestamp,
                                       std::string const& value);
+
+  /**
+   * This overload of SetCell works exactly like the one above, except
+   * that if a cell at that timestamp exists, update_cell_fn is called
+   * with the existing value and the new value and the string that it
+   * returns is the new value written into the cell. This overload is
+   * can be used for aggregation mutations such as the AddToCell
+   * mutation.
+   */
+  absl::optional<std::string> SetCell(
+      std::chrono::milliseconds timestamp, std::string const& value,
+      const std::function<std::string(std::string const&, std::string const&)>&
+          update_cell_fn);
   /**
    * Delete cells falling into a given timestamp range.
    *
@@ -140,6 +153,21 @@ class ColumnFamilyRow {
   absl::optional<std::string> SetCell(std::string const& column_qualifier,
                                       std::chrono::milliseconds timestamp,
                                       std::string const& value);
+
+  /**
+   * This overload of SetCell works exactly like the one above, except
+   * that if a cell at that timestamp exists, update_cell_fn is called
+   * with the existing value and the new value and the string that it
+   * returns is the new value written into the cell. This overload is
+   * can be used for aggregation mutations such as the AddToCell
+   * mutation.
+   */
+  absl::optional<std::string> SetCell(
+      std::string const& column_qualifier, std::chrono::milliseconds timestamp,
+      std::string const& value,
+      std::function<std::string(std::string const&, std::string const&)> const&
+          update_cell_fn);
+
   /**
    * Delete cells falling into a given timestamp range in one column.
    *
@@ -236,6 +264,21 @@ class ColumnFamily {
                                       std::string const& column_qualifier,
                                       std::chrono::milliseconds timestamp,
                                       std::string const& value);
+
+  /**
+   * This overload of SetCell works exactly like the one above, except
+   * that if a cell at that timestamp exists, update_cell_fn is called
+   * with the existing value and the new value and the string that it
+   * returns is the new value written into the cell. This overload is
+   * can be used for aggregation mutations such as the AddToCell
+   * mutation.
+   */
+  absl::optional<std::string> SetCell(
+      std::string const& row_key, std::string const& column_qualifier,
+      std::chrono::milliseconds timestamp, std::string const& value,
+      std::function<std::string(std::string const&, std::string const&)> const&
+          update_cell_fn);
+
   /**
    * Delete the whole row from this column family.
    *
