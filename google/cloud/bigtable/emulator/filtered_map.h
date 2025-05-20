@@ -235,7 +235,7 @@ class TimestampRangeFilteredMapView {
         return;
       }
       // TODO(prawilny): is it the appropriate bound?
-      unfiltered_pos_ = parent_.get().unfiltered_.get().upper_bound(filter_pos_->start());
+      unfiltered_pos_ = parent_.get().unfiltered_.get().upper_bound(filter_pos_->end());
     }
 
     // After `unfiltered_pos_` was increased, make sure it's within a valid
