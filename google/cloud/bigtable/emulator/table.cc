@@ -306,7 +306,27 @@ Status Table::DoMutationsWithPossibleRollback(
       }
     } else if (mutation.has_add_to_cell()) {
       auto const& add_to_cell = mutation.add_to_cell();
-      auto status = row_transaction.AddToCell(add_to_cell);
+
+      absl::optional<std::chrono::milliseconds> timestamp_override =
+          absl::nullopt;
+
+      std::chrono::milliseconds timestamp = std::chrono::milliseconds::zero();
+
+      if (add_to_cell.has_timestamp() &&
+          add_to_cell.timestamp().has_raw_timestamp_micros()) {
+        timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::microseconds(
+                add_to_cell.timestamp().raw_timestamp_micros()));
+      }
+
+      // If no valid timestamp is provided, override with the system time.
+      if (timestamp <= std::chrono::milliseconds::zero()) {
+        timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch());
+        timestamp_override.emplace(std::move(timestamp));
+      }
+
+      auto status = row_transaction.AddToCell(add_to_cell, timestamp_override);
       if (!status.ok()) {
         return status;
       }
@@ -586,7 +606,8 @@ Status Table::DropRowRange(
 
 // NOLINTBEGIN(readability-convert-member-functions-to-static)
 Status RowTransaction::AddToCell(
-    ::google::bigtable::v2::Mutation_AddToCell const& add_to_cell) {
+    ::google::bigtable::v2::Mutation_AddToCell const& add_to_cell,
+    absl::optional<std::chrono::milliseconds> timestamp_override) {
   auto status = table_->FindColumnFamily(add_to_cell);
   if (!status.ok()) {
     return status.status();
@@ -640,40 +661,39 @@ Status RowTransaction::AddToCell(
           "only int64 values are supported",
           GCP_ERROR_INFO().WithMetadata("mutation", add_to_cell.DebugString()));
   }
-
   auto int64_input = add_to_cell.input().int_value();
+
   auto value = google::cloud::internal::EncodeBigEndian(int64_input);
   auto row_key = row_key_;
-  auto ts_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-      std::chrono::microseconds(
-          add_to_cell.timestamp().raw_timestamp_micros()));
+
+  std::chrono::milliseconds ts_ms;
+  if (timestamp_override.has_value()) {
+    ts_ms = timestamp_override.value();
+  } else {
+    ts_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::microseconds(
+            add_to_cell.timestamp().raw_timestamp_micros()));
+  }
+
+  if (!add_to_cell.has_column_qualifier() ||
+      !add_to_cell.column_qualifier().has_raw_value()) {
+    return InvalidArgumentError(
+        "column qualifier not set",
+        GCP_ERROR_INFO().WithMetadata("mutation", add_to_cell.DebugString()));
+  }
   auto column_qualifier = add_to_cell.column_qualifier().raw_value();
 
-  std::string old_value;
-  bool cell_existed = false;
+  auto maybe_old_value =
+      cf.SetCell(row_key, column_qualifier, ts_ms, value, cf.GetUpdateCell());
 
-  auto column_family_row_it = cf.find(row_key);
-  if (column_family_row_it != cf.end()) {
-    auto column_it = column_family_row_it->second.find(column_qualifier);
-    if (column_it != column_family_row_it->second.end()) {
-      auto column_row_it = column_it->second.find(ts_ms);
-      if (column_row_it != column_it->second.end()) {
-        cell_existed = true;
-        old_value = column_row_it->second;
-      }
-    }
-  }
-
-  if (!cell_existed) {
-    DeleteValue delete_value = {cf, column_qualifier, ts_ms};
-    undo_.emplace(delete_value);
-
+  if (!maybe_old_value) {
+    DeleteValue delete_value{cf, std::move(column_qualifier), ts_ms};
+    undo_.emplace(std::move(delete_value));
   } else {
-    RestoreValue restore_value = {cf, column_qualifier, ts_ms, old_value};
-    undo_.emplace(restore_value);
+    RestoreValue restore_value{cf, std::move(column_qualifier), ts_ms,
+                               std::move(maybe_old_value.value())};
+    undo_.emplace(std::move(restore_value));
   }
-
-  cf.SetCell(row_key, column_qualifier, ts_ms, value);
 
   return Status();
 }

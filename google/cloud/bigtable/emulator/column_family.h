@@ -360,6 +360,10 @@ class ColumnFamily {
     return value_type_;
   };
 
+  std::function<std::string(std::string const&, std::string const&)> GetUpdateCell() {
+    return UpdateCell_;
+  };
+
  private:
   std::map<std::string, ColumnFamilyRow> rows_;
 
