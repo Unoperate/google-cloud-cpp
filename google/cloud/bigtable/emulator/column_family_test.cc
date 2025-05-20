@@ -229,14 +229,14 @@ TEST(FilteredColumnFamilyStream, Unfiltered) {
   FilteredColumnFamilyStream filtered_stream(fam, "cf1", included_rows);
   EXPECT_EQ(R"""(
 row0 cf1:col0 @10ms: foo
-row0 cf1:col1 @20ms: bar
 row0 cf1:col1 @30ms: baz
+row0 cf1:col1 @20ms: bar
 row1 cf1:col0 @10ms: foo
-row1 cf1:col1 @20ms: foo
 row1 cf1:col1 @30ms: foo
+row1 cf1:col1 @20ms: foo
 row2 cf1:col0 @10ms: qux
-row2 cf1:col2 @40ms: qux
 row2 cf1:col2 @50ms: qux
+row2 cf1:col2 @40ms: qux
 )""",
             "\n" + DumpFilteredColumnFamilyStream(filtered_stream));
 }
