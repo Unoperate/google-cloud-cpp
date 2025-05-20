@@ -85,12 +85,11 @@ class ColumnRow {
       std::map<std::chrono::milliseconds, std::string>::const_iterator;
   const_iterator begin() const { return cells_.begin(); }
   const_iterator end() const { return cells_.end(); }
-  const_iterator newest_before(std::chrono::milliseconds timestamp) const {
-    if (timestamp == std::chrono::milliseconds::zero()) {
-      return cells_.begin();
-    } else {
-      return cells_.upper_bound(timestamp);
-    }
+  const_iterator lower_bound(std::chrono::milliseconds timestamp) const {
+    return cells_.lower_bound(timestamp);
+  }
+  const_iterator upper_bound(std::chrono::milliseconds timestamp) const {
+    return cells_.upper_bound(timestamp);
   }
 
   const_iterator find(std::chrono::milliseconds const& timestamp) {

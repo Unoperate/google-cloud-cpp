@@ -24,7 +24,8 @@ namespace emulator {
 
 absl::optional<std::string> ColumnRow::SetCell(
     std::chrono::milliseconds timestamp, std::string const& value) {
-  if (timestamp <= std::chrono::milliseconds::zero()) {
+  // TODO(prawilny): fix it - value of 0 means 0, empty means current timestamp.
+  if (false) {
     timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch());
   }
@@ -44,7 +45,7 @@ std::vector<Cell> ColumnRow::DeleteTimeRange(
     ::google::bigtable::v2::TimestampRange const& time_range) {
   std::vector<Cell> deleted_cells;
   for (auto cell_it =
-           newest_before(std::chrono::duration_cast<std::chrono::milliseconds>(
+           upper_bound(std::chrono::duration_cast<std::chrono::milliseconds>(
                std::chrono::microseconds(time_range.end_timestamp_micros())));
        cell_it != cells_.end() &&
        cell_it->first >= std::chrono::duration_cast<std::chrono::milliseconds>(

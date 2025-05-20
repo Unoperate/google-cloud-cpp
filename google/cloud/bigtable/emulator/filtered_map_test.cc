@@ -25,6 +25,8 @@ namespace cloud {
 namespace bigtable {
 namespace emulator {
 
+using testing_util::chrono_literals::operator""_ms;
+
 bool const kOpen = true;
 bool const kClosed = false;
 
