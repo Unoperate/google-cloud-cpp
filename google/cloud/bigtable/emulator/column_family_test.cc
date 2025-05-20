@@ -276,12 +276,12 @@ TEST(FilteredColumnFamilyStream, FilterByTimestampRange) {
       TimestampRange{TimestampRangeSet::Range(100_ms, 200_ms)});
   EXPECT_EQ(R"""(
 row0 cf1:col0 @100ms: foo
-row0 cf1:col2 @100ms: foo
-row0 cf1:col2 @120ms: foo
 row0 cf1:col2 @140ms: foo
-row1 cf1:col2 @100ms: foo
-row1 cf1:col2 @120ms: foo
+row0 cf1:col2 @120ms: foo
+row0 cf1:col2 @100ms: foo
 row1 cf1:col2 @140ms: foo
+row1 cf1:col2 @120ms: foo
+row1 cf1:col2 @100ms: foo
 )""",
             "\n" + DumpFilteredColumnFamilyStream(filtered_stream));
 }
