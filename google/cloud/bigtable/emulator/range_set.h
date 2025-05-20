@@ -35,6 +35,8 @@ namespace cloud {
 namespace bigtable {
 namespace emulator {
 
+// TODO(prawilny): remove open/close variants of methods
+
 /**
  * Objects of this class hold a sorted, disjoint set of string ranges.
  *
@@ -145,8 +147,9 @@ class TimestampRangeSet {
     static StatusOr<Range> FromTimestampRange(
         google::bigtable::v2::TimestampRange const& timestamp_range);
 
+    // TODO: static bool EndOpen(Value value) and use it in newest_or_at()?
+
     Value start() const { return start_; }
-    Value start_finite() const { return start_; }
     // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
     bool start_open() const { return false; }
     // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
@@ -176,6 +179,10 @@ class TimestampRangeSet {
       bool operator()(Range const& lhs, Range const& rhs) const;
     };
 
+    struct EndGreater {
+      bool operator()(Range const& lhs, Range const& rhs) const;
+    };
+
    private:
     Value start_;
     Value end_;
@@ -186,12 +193,12 @@ class TimestampRangeSet {
   void Sum(Range inserted_range);
   void Intersect(Range const& intersected_range);
 
-  std::set<Range, Range::StartLess> const& disjoint_ranges() const {
+  std::set<Range, Range::EndGreater> const& disjoint_ranges() const {
     return disjoint_ranges_;
   };
 
  private:
-  std::set<Range, Range::StartLess> disjoint_ranges_;
+  std::set<Range, Range::EndGreater> disjoint_ranges_;
 };
 
 bool operator==(TimestampRangeSet::Range const& lhs,

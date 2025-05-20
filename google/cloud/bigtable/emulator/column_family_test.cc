@@ -67,8 +67,8 @@ TEST(ColumnRow, Trivial) {
 
   col_row.SetCell(0_ms, "baz");
   col_row.SetCell(20_ms, "qux");
-  EXPECT_EQ("bar", col_row.lower_bound(10_ms)->second);
-  EXPECT_EQ("qux", col_row.upper_bound(10_ms)->second);
+  EXPECT_EQ("qux", col_row.newest_before(0_ms)->second);
+  EXPECT_EQ("bar", col_row.newest_before(10_ms)->second);
 }
 
 TEST(ColumnRow, DeleteTimeRangeFinite) {

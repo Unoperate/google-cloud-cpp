@@ -85,25 +85,24 @@ class ColumnRow {
       std::map<std::chrono::milliseconds, std::string>::const_iterator;
   const_iterator begin() const { return cells_.begin(); }
   const_iterator end() const { return cells_.end(); }
-  const_iterator lower_bound(std::chrono::milliseconds timestamp) const {
-    return cells_.lower_bound(timestamp);
-  }
-  const_iterator upper_bound(std::chrono::milliseconds timestamp) const {
-    return cells_.upper_bound(timestamp);
+  const_iterator newest_before(std::chrono::milliseconds timestamp) const {
+    if (timestamp == std::chrono::milliseconds::zero()) {
+      return cells_.begin();
+    } else {
+      return cells_.upper_bound(timestamp);
+    }
   }
 
-  std::map<std::chrono::milliseconds, std::string>::iterator find(
-      std::chrono::milliseconds const& timestamp) {
+  const_iterator find(std::chrono::milliseconds const& timestamp) {
     return cells_.find(timestamp);
   }
 
-  void erase(
-      std::map<std::chrono::milliseconds, std::string>::iterator timestamp_it) {
+  void erase(const_iterator timestamp_it) {
     cells_.erase(timestamp_it);
   }
 
  private:
-  std::map<std::chrono::milliseconds, std::string> cells_;
+  std::map<std::chrono::milliseconds, std::string, std::greater<>> cells_;
 };
 
 /**
@@ -374,11 +373,11 @@ class FilteredColumnFamilyStream : public AbstractCellStreamImpl {
   std::vector<std::shared_ptr<re2::RE2 const>> column_regexes_;
   mutable TimestampRangeSet timestamp_ranges_;
 
-  RegexFiteredMapView<RangeFilteredMapView<ColumnFamily, StringRangeSet>> rows_;
+  RegexFiteredMapView<StringRangeFilteredMapView<ColumnFamily>> rows_;
   mutable absl::optional<RegexFiteredMapView<
-      RangeFilteredMapView<ColumnFamilyRow, StringRangeSet>>>
+      StringRangeFilteredMapView<ColumnFamilyRow>>>
       columns_;
-  mutable absl::optional<RangeFilteredMapView<ColumnRow, TimestampRangeSet>>
+  mutable absl::optional<TimestampRangeFilteredMapView<ColumnRow>>
       cells_;
 
   // If row_it_ == rows_.end() we've reached the end.
@@ -386,13 +385,13 @@ class FilteredColumnFamilyStream : public AbstractCellStreamImpl {
   //   if (row_it_ != rows_.end()) then
   //   cell_it_ != cells.end() && column_it_ != columns_.end().
   mutable absl::optional<RegexFiteredMapView<
-      RangeFilteredMapView<ColumnFamily, StringRangeSet>>::const_iterator>
+      StringRangeFilteredMapView<ColumnFamily>>::const_iterator>
       row_it_;
   mutable absl::optional<RegexFiteredMapView<
-      RangeFilteredMapView<ColumnFamilyRow, StringRangeSet>>::const_iterator>
+      StringRangeFilteredMapView<ColumnFamilyRow>>::const_iterator>
       column_it_;
   mutable absl::optional<
-      RangeFilteredMapView<ColumnRow, TimestampRangeSet>::const_iterator>
+      TimestampRangeFilteredMapView<ColumnRow>::const_iterator>
       cell_it_;
   mutable absl::optional<CellView> cur_value_;
   mutable bool initialized_{false};

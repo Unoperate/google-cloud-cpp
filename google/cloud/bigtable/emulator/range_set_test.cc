@@ -528,7 +528,6 @@ TEST(TimestampRangeSet, FromInfiniteTimestampRange) {
       google::bigtable::v2::TimestampRange{});
   ASSERT_STATUS_OK(infinite);
   EXPECT_EQ(0_ms, infinite->start());
-  EXPECT_EQ(0_ms, infinite->start_finite());
   EXPECT_EQ(0_ms, infinite->end());
   EXPECT_TRUE(infinite->start_closed());
   EXPECT_TRUE(infinite->end_open());
@@ -544,7 +543,6 @@ TEST(TimestampRangeSet, FromFiniteTimestampRange) {
   auto finite = TimestampRangeSet::Range::FromTimestampRange(proto);
   ASSERT_STATUS_OK(finite);
   EXPECT_EQ(1_ms, finite->start());
-  EXPECT_EQ(1_ms, finite->start_finite());
   EXPECT_EQ(123456_ms, finite->end());
   EXPECT_TRUE(finite->start_closed());
   EXPECT_TRUE(finite->end_open());
@@ -690,10 +688,10 @@ TEST(StringRangeSet, SingleRange) {
             *srs.disjoint_ranges().begin());
 }
 
-std::set<TimestampRangeSet::Range, TimestampRangeSet::Range::StartLess>
+std::set<TimestampRangeSet::Range, TimestampRangeSet::Range::EndGreater>
 TSRanges(std::vector<std::pair<std::chrono::milliseconds,
                                std::chrono::milliseconds>> const& ranges) {
-  std::set<TimestampRangeSet::Range, TimestampRangeSet::Range::StartLess> res;
+  std::set<TimestampRangeSet::Range, TimestampRangeSet::Range::EndGreater> res;
   std::transform(ranges.begin(), ranges.end(), std::inserter(res, res.begin()),
                  [](std::pair<std::chrono::milliseconds,
                               std::chrono::milliseconds> const& range) {

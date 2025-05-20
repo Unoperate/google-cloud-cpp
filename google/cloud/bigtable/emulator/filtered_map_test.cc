@@ -49,16 +49,14 @@ std::vector<std::string> Vec(std::initializer_list<char const*> const& v) {
 TEST(RangeFilteredMapView, NoFilter) {
   std::map<std::string, int> unfiltered{{"zero", 0}, {"one", 1}, {"two", 2}};
   auto filter = StringRangeSet::All();
-  RangeFilteredMapView<decltype(unfiltered), StringRangeSet> filtered(
-      unfiltered, filter);
+  StringRangeFilteredMapView<decltype(unfiltered)> filtered(unfiltered, filter);
   EXPECT_EQ(Vec({"zero", "one", "two"}), Keys(filtered));
 }
 
 TEST(RangeFilteredMapView, EmptyFilter) {
   std::map<std::string, int> unfiltered{{"zero", 0}, {"one", 1}, {"two", 2}};
   auto filter = StringRangeSet::Empty();
-  RangeFilteredMapView<decltype(unfiltered), StringRangeSet> filtered(
-      unfiltered, filter);
+  StringRangeFilteredMapView<decltype(unfiltered)> filtered(unfiltered, filter);
   EXPECT_EQ(Vec({}), Keys(filtered));
 }
 
@@ -67,8 +65,7 @@ TEST(RangeFilteredMapView, OneOpen) {
                                         {"AAAb", 0}, {"AAB", 0}, {"AAC", 0}};
   auto filter = StringRangeSet::Empty();
   filter.Sum(StringRangeSet::Range("AAA", kOpen, "AAB", kOpen));
-  RangeFilteredMapView<decltype(unfiltered), StringRangeSet> filtered(
-      unfiltered, filter);
+  StringRangeFilteredMapView<decltype(unfiltered)> filtered(unfiltered, filter);
   EXPECT_EQ(Vec({"AAAa", "AAAb"}), Keys(filtered));
 }
 
@@ -77,8 +74,7 @@ TEST(RangeFilteredMapView, OneClosed) {
                                         {"AAAb", 0}, {"AAB", 0}, {"AAC", 0}};
   auto filter = StringRangeSet::Empty();
   filter.Sum(StringRangeSet::Range("AAA", kClosed, "AAB", kClosed));
-  RangeFilteredMapView<decltype(unfiltered), StringRangeSet> filtered(
-      unfiltered, filter);
+  StringRangeFilteredMapView<decltype(unfiltered)> filtered(unfiltered, filter);
   EXPECT_EQ(Vec({"AAA", "AAAa", "AAAb", "AAB"}), Keys(filtered));
 }
 
@@ -87,8 +83,7 @@ TEST(RangeFilteredMapView, NoEntriesAfterClosedFilter) {
       {"AA", 0}, {"AAA", 0}, {"AAAa", 0}, {"AAAb", 0}};
   auto filter = StringRangeSet::Empty();
   filter.Sum(StringRangeSet::Range("AAA", kClosed, "AAB", kClosed));
-  RangeFilteredMapView<decltype(unfiltered), StringRangeSet> filtered(
-      unfiltered, filter);
+  StringRangeFilteredMapView<decltype(unfiltered)> filtered(unfiltered, filter);
   EXPECT_EQ(Vec({"AAA", "AAAa", "AAAb"}), Keys(filtered));
 }
 
@@ -97,8 +92,7 @@ TEST(RangeFilteredMapView, NoEntriesAfterOpenFilter) {
       {"AA", 0}, {"AAA", 0}, {"AAAa", 0}, {"AAAb", 0}};
   auto filter = StringRangeSet::Empty();
   filter.Sum(StringRangeSet::Range("AAA", kOpen, "AAB", kOpen));
-  RangeFilteredMapView<decltype(unfiltered), StringRangeSet> filtered(
-      unfiltered, filter);
+  StringRangeFilteredMapView<decltype(unfiltered)> filtered(unfiltered, filter);
   EXPECT_EQ(Vec({"AAAa", "AAAb"}), Keys(filtered));
 }
 
@@ -107,8 +101,7 @@ TEST(RangeFilteredMapView, NoEntriesBeforeClosedFilter) {
       {"AAA", 0}, {"AAAa", 0}, {"AAAb", 0}, {"AAB", 0}, {"AAC", 0}};
   auto filter = StringRangeSet::Empty();
   filter.Sum(StringRangeSet::Range("AAA", kClosed, "AAB", kClosed));
-  RangeFilteredMapView<decltype(unfiltered), StringRangeSet> filtered(
-      unfiltered, filter);
+  StringRangeFilteredMapView<decltype(unfiltered)> filtered(unfiltered, filter);
   EXPECT_EQ(Vec({"AAA", "AAAa", "AAAb", "AAB"}), Keys(filtered));
 }
 
@@ -117,8 +110,7 @@ TEST(RangeFilteredMapView, NoEntriesBeforeOpenFilter) {
       {"AAAa", 0}, {"AAAb", 0}, {"AAB", 0}, {"AAC", 0}};
   auto filter = StringRangeSet::Empty();
   filter.Sum(StringRangeSet::Range("AAA", kOpen, "AAB", kOpen));
-  RangeFilteredMapView<decltype(unfiltered), StringRangeSet> filtered(
-      unfiltered, filter);
+  StringRangeFilteredMapView<decltype(unfiltered)> filtered(unfiltered, filter);
   EXPECT_EQ(Vec({"AAAa", "AAAb"}), Keys(filtered));
 }
 
@@ -131,8 +123,7 @@ TEST(RangeFilteredMapView, MultipleFilters) {
   filter.Sum(StringRangeSet::Range("AAA", kOpen, "AAB", kClosed));
   filter.Sum(StringRangeSet::Range("BBB", kClosed, "BBC", kOpen));
   filter.Sum(StringRangeSet::Range("CCC", kClosed, "CCD", kOpen));
-  RangeFilteredMapView<decltype(unfiltered), StringRangeSet> filtered(
-      unfiltered, filter);
+  StringRangeFilteredMapView<decltype(unfiltered)> filtered(unfiltered, filter);
 
   EXPECT_EQ(Vec({"AAAa", "AAAb", "AAB", "BBB", "BBBb", "CCCa", "CCCb"}),
             Keys(filtered));
@@ -183,6 +174,8 @@ TEST(RegexFiteredMapView, MultipleFilters) {
   RegexFiteredMapView<decltype(unfiltered)> filtered(unfiltered, patterns);
   EXPECT_EQ(Vec({"abc", "QQ b QQ c QQ a QQ"}), Keys(filtered));
 }
+
+// TODO(prawilny): add timestamp tests
 
 }  // namespace emulator
 }  // namespace bigtable

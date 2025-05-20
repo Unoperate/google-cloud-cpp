@@ -531,6 +531,19 @@ bool TimestampRangeSet::Range::EndLess::operator()(Range const& lhs,
   return lhs.end() < rhs.end();
 }
 
+// TODO(prawilny): deduplicate with EndLess
+bool TimestampRangeSet::Range::EndGreater::operator()(Range const& lhs,
+                                                      Range const& rhs) const {
+  if (lhs.end() == std::chrono::milliseconds::zero()) {
+    return true;
+  }
+  if (rhs.end() == std::chrono::milliseconds::zero()) {
+    return false;
+  }
+  return lhs.end() > rhs.end();
+}
+
+
 TimestampRangeSet TimestampRangeSet::All() {
   TimestampRangeSet res;
   res.Sum(Range(std::chrono::milliseconds(0), std::chrono::milliseconds(0)));
