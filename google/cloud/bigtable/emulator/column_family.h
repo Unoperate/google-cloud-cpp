@@ -79,7 +79,7 @@ class ColumnRow {
    */
   absl::optional<std::string> SetCell(
       std::chrono::milliseconds timestamp, std::string const& value,
-      const std::function<std::string(std::string const&, std::string const&)>&
+      std::function<std::string(std::string const&, std::string const&)> const&
           update_cell_fn);
   /**
    * Delete cells falling into a given timestamp range.
@@ -360,7 +360,8 @@ class ColumnFamily {
     return value_type_;
   };
 
-  std::function<std::string(std::string const&, std::string const&)> GetUpdateCell() {
+  std::function<std::string(std::string const&, std::string const&)>
+  GetUpdateCell() {
     return UpdateCell_;
   };
 

@@ -99,11 +99,10 @@ absl::optional<std::string> ColumnFamilyRow::SetCell(
 }
 
 absl::optional<std::string> ColumnFamilyRow::SetCell(
-      std::string const& column_qualifier, std::chrono::milliseconds timestamp,
-      std::string const& value,
-      std::function<std::string(std::string const&, std::string const&)> const&
-      update_cell_fn) {
-
+    std::string const& column_qualifier, std::chrono::milliseconds timestamp,
+    std::string const& value,
+    std::function<std::string(std::string const&, std::string const&)> const&
+        update_cell_fn) {
   return columns_[column_qualifier].SetCell(timestamp, value, update_cell_fn);
 }
 
