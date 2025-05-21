@@ -147,8 +147,6 @@ class TimestampRangeSet {
     static StatusOr<Range> FromTimestampRange(
         google::bigtable::v2::TimestampRange const& timestamp_range);
 
-    // TODO: static bool EndOpen(Value value) and use it in newest_or_at()?
-
     Value start() const { return start_; }
     // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
     bool start_open() const { return false; }

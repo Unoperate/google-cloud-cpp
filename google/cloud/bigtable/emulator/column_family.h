@@ -100,7 +100,7 @@ class ColumnRow {
   }
 
  private:
-  // TODO(prawilny): comment that we need to use this order to match cloud bigtable.
+  // Note the order - the iterator return the freshest cells first.
   std::map<std::chrono::milliseconds, std::string, std::greater<>> cells_;
 };
 

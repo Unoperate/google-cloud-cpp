@@ -182,6 +182,10 @@ class TimestampRangeFilteredMapView {
     using reference = value_type const&;
     using pointer = value_type const*;
 
+    // Note that the set whose iterator is received here is sorted
+    // "earliest-start-first", whereas we need to have the iterator sorted
+    // "latest-end-first". Fortunately, the set is disjoint, so we can simply
+    // use reverse iterator.
     const_iterator(
         TimestampRangeFilteredMapView const& parent,
         typename Map::const_iterator unfiltered_pos,
@@ -235,7 +239,7 @@ class TimestampRangeFilteredMapView {
         // unfiltered_pos_ is already pointing far enough.
         return;
       }
-      // TODO(prawilny): is it the appropriate bound?
+      // Timestamp ranges always have end open, so we always use upper_bound().
       unfiltered_pos_ =
           parent_.get().unfiltered_.get().upper_bound(filter_pos_->end());
     }
@@ -278,9 +282,6 @@ class TimestampRangeFilteredMapView {
       : unfiltered_(std::cref(unfiltered)), filter_(std::cref(filter)) {}
 
   const_iterator begin() const {
-    // TODO(prawilny): note that we have StartLess not to reorder the order
-    // which comes from a higher layer, but we reorder them using the fact that
-    // the ranges are disjoint.
     return const_iterator(*this, unfiltered_.get().begin(),
                           filter_.get().disjoint_ranges().crbegin());
   }

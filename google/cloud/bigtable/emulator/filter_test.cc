@@ -815,7 +815,7 @@ TEST_F(InvalidFilterProtoTest, ConditionPredicateSink) {
 
   auto maybe_stream = TryCreate();
 
-  // TODO(prawilny): implement
+  // FIXME unskip this test after fixing condition validation.
   GTEST_SKIP() << "Searching filter graph for sink nodes unimplemented.";
   EXPECT_THAT(maybe_stream,
               StatusIs(StatusCode::kInvalidArgument,
@@ -944,8 +944,6 @@ class FilterApplicationPropagation : public ::testing::Test {
   TimestampRangeSet::Range sample_ts_range_;
   std::map<std::string, InternalFilterType> internal_filters_;
 
-  // TODO(prawilny): this test verifies which of the filters can be propagated
-  // up the pipeline thorugh tested filter.
   void TestPropagation(RowFilter const& filter, int num_applies_to_ignore) {
     for (bool underlying_supports_filter : {false, true}) {
       for (auto const& internal_filter_type : internal_filters_) {
@@ -958,10 +956,6 @@ class FilterApplicationPropagation : public ::testing::Test {
                 .Times(num_applies_to_ignore)
                 .WillRepeatedly(Return(false));
           }
-          // TODO(prawilny): I don't get it - why is this particular filter used
-          // in EXPECT_CALL? Will the test fail if it is not called?
-          // TODO(prawilny): I think it makes sense - source is asked to
-          // propagate IFF the current filter supoprts the propagation.
           if (internal_filter_type.second.should_propagate) {
             EXPECT_CALL(
                 *mock_impl,
@@ -1171,10 +1165,6 @@ TEST_F(FilterApplicationPropagation, Condition) {
         return CellStream(std::move(mock_impl));
       });
       ASSERT_STATUS_OK(maybe_stream);
-      // TODO(prawilny): suspicious - it's going to fail if we adjust true/false
-      // filters appropriately.
-      // TODO(prawilny): whether the source supports the propagated filter is
-      // only relevant for RowKeyRegex.
       EXPECT_EQ(underlying_supports_filter,
                 maybe_stream->ApplyFilter(
                     internal_filter_type.second.internal_filter))
@@ -1183,7 +1173,6 @@ TEST_F(FilterApplicationPropagation, Condition) {
   }
 }
 
-// TODO(prawilny): rename to InternalFiltersArePropagatedToSource
 class InternalFiltersAreApplied : public ::testing::Test {
  protected:
   RowFilter filter_;
@@ -1259,16 +1248,7 @@ TEST_F(InternalFiltersAreApplied, TimestampRange) {
 class VectorCellStream : public AbstractCellStreamImpl {
  public:
   explicit VectorCellStream(std::vector<TestCell> cells)
-      : cells_{std::move(cells)}, current_cell_{cells_.begin()} {
-    // TODO(prawilny): ensure that the cells are sorted correctly (using
-    // MergeCellStreams::CellStreamGreater?)
-    // TODO(prawilny): is it needed? interleave+filter might cause unordered
-    // input. How does it work in Cloud Bigtable? In our case, we merge in
-    // interleave seemingly correctly.
-    // TODO(prawilny): maybe we should do it in the most primitive way: create
-    // multiple single-value streams and use MergeCellStream to create a common
-    // one.
-  }
+      : cells_{std::move(cells)}, current_cell_{cells_.begin()} {}
   bool ApplyFilter(InternalFilter const&) override { return false; }
   bool HasValue() const override { return current_cell_ != cells_.end(); }
   CellView const& Value() const override { return current_cell_->AsCellView(); }
@@ -1295,7 +1275,6 @@ class FilterWorkTest : public ::testing::Test {
     auto maybe_stream = CreateFilter(filter, [input_cells] {
       return CellStream(std::make_unique<VectorCellStream>(input_cells));
     });
-    // TODO(prawilny): clean this up?
     if (!maybe_stream.status().ok()) {
       return maybe_stream.status();
     }

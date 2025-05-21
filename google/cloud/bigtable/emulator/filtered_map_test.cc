@@ -246,8 +246,6 @@ TEST(RegexFiteredMapView, MultipleFilters) {
   EXPECT_EQ(Vec({"abc", "QQ b QQ c QQ a QQ"}), Keys(filtered));
 }
 
-// TODO(prawilny): add timestamp tests
-
 }  // namespace emulator
 }  // namespace bigtable
 }  // namespace cloud
