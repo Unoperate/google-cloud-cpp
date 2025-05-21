@@ -100,6 +100,7 @@ class ColumnRow {
   }
 
  private:
+  // TODO(prawilny): comment that we need to use this order to match cloud bigtable.
   std::map<std::chrono::milliseconds, std::string, std::greater<>> cells_;
 };
 
