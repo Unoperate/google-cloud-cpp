@@ -50,7 +50,6 @@ std::vector<Cell> ColumnRow::DeleteTimeRange(
                              std::chrono::microseconds(
                                  time_range.start_timestamp_micros()));) {
     Cell cell = {std::move(cell_it->first), std::move(cell_it->second)};
-    // TODO(prawilny): check what order is returned by cloud bigtable.
     deleted_cells.emplace_back(std::move(cell));
     cells_.erase(cell_it++);
   }
