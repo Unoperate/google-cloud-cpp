@@ -51,8 +51,7 @@ class ColumnRow {
    * Insert or update and existing cell at a given timestamp.
    *
    * @param timestamp the time stamp at which the value will be inserted or
-   *     updated. If it equals zero then number of milliseconds since epoch will
-   *     be used instead.
+   *     updated.
    * @param value the value to insert/update.
    *
    * @return no value if the timestamp had no value before, otherwise
@@ -119,8 +118,7 @@ class ColumnFamilyRow {
    *
    * @param column_qualifier the column qualifier at which to update the value.
    * @param timestamp the time stamp at which the value will be inserted or
-   *     updated. If it equals zero then number of milliseconds since epoch will
-   *     be used instead.
+   *     updated.
    * @param value the value to insert/update.
    *
    * @return no value if the timestamp had no value before, otherwise
@@ -207,8 +205,7 @@ class ColumnFamily {
    * @param row_key the row key at which to update the value.
    * @param column_qualifier the column qualifier at which to update the value.
    * @param timestamp the time stamp at which the value will be inserted or
-   *     updated. If it equals zero then number of milliseconds since epoch will
-   *     be used instead.
+   *     updated.
    * @param value the value to insert/update.
    *
    * @return no value if the timestamp had no value before, otherwise
