@@ -221,7 +221,8 @@ class TimestampRangeFilteredMapView {
    private:
     // Adjust `unfiltered_pos_` after we transition to a different range.
     void AdvanceToNextRange() {
-      if (filter_pos_ == parent_.get().filter_.get().disjoint_ranges().crend()) {
+      if (filter_pos_ ==
+          parent_.get().filter_.get().disjoint_ranges().crend()) {
         // We've reached the end.
         unfiltered_pos_ = parent_.get().unfiltered_.get().end();
         return;
@@ -235,7 +236,8 @@ class TimestampRangeFilteredMapView {
         return;
       }
       // TODO(prawilny): is it the appropriate bound?
-      unfiltered_pos_ = parent_.get().unfiltered_.get().upper_bound(filter_pos_->end());
+      unfiltered_pos_ =
+          parent_.get().unfiltered_.get().upper_bound(filter_pos_->end());
     }
 
     // After `unfiltered_pos_` was increased, make sure it's within a valid
@@ -276,6 +278,9 @@ class TimestampRangeFilteredMapView {
       : unfiltered_(std::cref(unfiltered)), filter_(std::cref(filter)) {}
 
   const_iterator begin() const {
+    // TODO(prawilny): note that we have StartLess not to reorder the order
+    // which comes from a higher layer, but we reorder them using the fact that
+    // the ranges are disjoint.
     return const_iterator(*this, unfiltered_.get().begin(),
                           filter_.get().disjoint_ranges().crbegin());
   }
