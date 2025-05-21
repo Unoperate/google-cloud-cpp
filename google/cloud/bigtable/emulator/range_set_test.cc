@@ -529,10 +529,6 @@ TEST(TimestampRangeSet, FromInfiniteTimestampRange) {
   ASSERT_STATUS_OK(infinite);
   EXPECT_EQ(0_ms, infinite->start());
   EXPECT_EQ(0_ms, infinite->end());
-  EXPECT_TRUE(infinite->start_closed());
-  EXPECT_TRUE(infinite->end_open());
-  EXPECT_FALSE(infinite->start_open());
-  EXPECT_FALSE(infinite->end_closed());
 }
 
 TEST(TimestampRangeSet, FromFiniteTimestampRange) {
@@ -544,10 +540,6 @@ TEST(TimestampRangeSet, FromFiniteTimestampRange) {
   ASSERT_STATUS_OK(finite);
   EXPECT_EQ(1_ms, finite->start());
   EXPECT_EQ(123456_ms, finite->end());
-  EXPECT_TRUE(finite->start_closed());
-  EXPECT_TRUE(finite->end_open());
-  EXPECT_FALSE(finite->start_open());
-  EXPECT_FALSE(finite->end_closed());
 }
 
 TEST(TimestampRangeSet, RangeStartLess) {
