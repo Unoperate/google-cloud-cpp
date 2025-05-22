@@ -1293,6 +1293,8 @@ class FilterWorkTest : public ::testing::Test {
 
 // TODO(prawilny): verify that these tests DO test if correct NextMode is
 // returned by the filters.
+// TODO(prawilny): ensure that all the row-sensitive filters use something
+// different than "r" as row in the tests.
 
 TEST_F(FilterWorkTest, Pass) {
   RowFilter filter;
@@ -1456,16 +1458,19 @@ TEST_F(FilterWorkTest, CellsPerRowOffset) {
       TestCell{"r1", "cf2", "q", 0_ms, "v"},
       TestCell{"r2", "cf", "q1", 0_ms, "v"},
       TestCell{"r2", "cf", "q2", 0_ms, "v"},
-      TestCell{"r3", "cf", "q", 1_ms, "v"},
       TestCell{"r3", "cf", "q", 2_ms, "v"},
+      TestCell{"r3", "cf", "q", 1_ms, "v"},
+      TestCell{"r4", "cf", "q", 0_ms, "v"},
+      TestCell{"r4", "cf", "q", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
 
-  ASSERT_EQ(3, maybe_output->size());
+  ASSERT_EQ(4, maybe_output->size());
   EXPECT_EQ(cells[1], maybe_output->at(0));
   EXPECT_EQ(cells[3], maybe_output->at(1));
   EXPECT_EQ(cells[5], maybe_output->at(2));
+  EXPECT_EQ(cells[7], maybe_output->at(3));
 }
 
 TEST_F(FilterWorkTest, CellsPerRowLimit) {
@@ -1477,8 +1482,8 @@ TEST_F(FilterWorkTest, CellsPerRowLimit) {
       TestCell{"r1", "cf2", "q", 0_ms, "v"},
       TestCell{"r2", "cf", "q1", 0_ms, "v"},
       TestCell{"r2", "cf", "q2", 0_ms, "v"},
-      TestCell{"r3", "cf", "q", 1_ms, "v"},
       TestCell{"r3", "cf", "q", 2_ms, "v"},
+      TestCell{"r3", "cf", "q", 1_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
@@ -1519,9 +1524,9 @@ TEST_F(FilterWorkTest, TimestampRange) {
   filter.mutable_timestamp_range_filter()->set_end_timestamp_micros(3000);
 
   std::vector<TestCell> cells{
-      TestCell{"r1", "cf", "q", 1_ms, "v"},
+      TestCell{"r1", "cf", "q", 3_ms, "v"},
       TestCell{"r2", "cf", "q", 2_ms, "v"},
-      TestCell{"r3", "cf", "q", 3_ms, "v"},
+      TestCell{"r3", "cf", "q", 1_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
@@ -1575,9 +1580,9 @@ TEST_F(FilterWorkTest, Chain) {
       TestCell{"r2", "cf", "q1", 0_ms, "v"},
       TestCell{"r2", "cf", "q2", 0_ms, "v"},
       TestCell{"r2", "cf", "q3", 0_ms, "v"},
-      TestCell{"r3", "cf", "q", 1_ms, "v"},
-      TestCell{"r3", "cf", "q", 2_ms, "v"},
       TestCell{"r3", "cf", "q", 3_ms, "v"},
+      TestCell{"r3", "cf", "q", 2_ms, "v"},
+      TestCell{"r3", "cf", "q", 1_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
@@ -1726,19 +1731,18 @@ TEST_F(FilterWorkTest, ConditionEmptyNonempty) {
       ->set_apply_label_transformer("FALSE");
 
   std::vector<TestCell> cells{
-      TestCell{"r1", "cf", "q", 1_ms, "t"},
-      TestCell{"r1", "cf", "q", 2_ms, "t"},
       TestCell{"r1", "cf", "q", 3_ms, "t"},
-      TestCell{"r2", "cf", "q", 1_ms, "f"},
-      TestCell{"r2", "cf", "q", 2_ms, "t"},
+      TestCell{"r1", "cf", "q", 2_ms, "t"},
+      TestCell{"r1", "cf", "q", 1_ms, "t"},
       TestCell{"r2", "cf", "q", 3_ms, "f"},
-      TestCell{"r3", "cf", "q", 1_ms, "f"},
-      TestCell{"r3", "cf", "q", 2_ms, "f"},
+      TestCell{"r2", "cf", "q", 2_ms, "t"},
+      TestCell{"r2", "cf", "q", 1_ms, "f"},
       TestCell{"r3", "cf", "q", 3_ms, "f"},
-      TestCell{"r4", "cf", "q", 1_ms, "t"},
-      TestCell{"r4", "cf", "q", 2_ms, "f"},
+      TestCell{"r3", "cf", "q", 2_ms, "f"},
+      TestCell{"r3", "cf", "q", 1_ms, "f"},
       TestCell{"r4", "cf", "q", 3_ms, "t"},
-
+      TestCell{"r4", "cf", "q", 2_ms, "f"},
+      TestCell{"r4", "cf", "q", 1_ms, "t"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
@@ -1788,35 +1792,31 @@ TEST_F(FilterWorkTest, ConditionBranchFilterNextDifferentThanCell) {
       ->set_column_qualifier_regex_filter("q2");
 
   std::vector<TestCell> cells{
-      TestCell{"r1", "cf", "q", 1_ms, "t"},
-      TestCell{"r1", "cf", "q", 2_ms, "t"},
       TestCell{"r1", "cf", "q", 3_ms, "t"},
-      TestCell{"r2", "cf", "q", 1_ms, "f"},
-      TestCell{"r2", "cf", "q", 2_ms, "t"},
+      TestCell{"r1", "cf", "q", 2_ms, "t"},
+      TestCell{"r1", "cf", "q", 1_ms, "t"},
       TestCell{"r2", "cf", "q", 3_ms, "f"},
+      TestCell{"r2", "cf", "q", 2_ms, "t"},
+      TestCell{"r2", "cf", "q", 1_ms, "f"},
       TestCell{"r3", "cf1", "q2", 1_ms, "f"},
       TestCell{"r3", "cf2", "q1", 2_ms, "f"},
       TestCell{"r3", "cf3", "q2", 3_ms, "f"},
-      TestCell{"r4", "cf", "q", 1_ms, "t"},
+      TestCell{"r4", "cf", "q", 3_ms, "f"},
       TestCell{"r4", "cf", "q", 2_ms, "f"},
-      TestCell{"r4", "cf", "q", 3_ms, "t"},
+      TestCell{"r4", "cf", "q", 1_ms, "t"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
 
   std::vector<TestCell> expected{
-      TestCell{"r1", "cf", "q", 1_ms, "t", "TRUE"},
-      TestCell{"r2", "cf", "q", 1_ms, "f", "TRUE"},
+      TestCell{"r1", "cf", "q", 3_ms, "t", "TRUE"},
+      TestCell{"r2", "cf", "q", 3_ms, "f", "TRUE"},
       TestCell{"r3", "cf1", "q2", 1_ms, "f", "FALSE"},
       TestCell{"r3", "cf3", "q2", 3_ms, "f", "FALSE"},
-      TestCell{"r4", "cf", "q", 1_ms, "t", "TRUE"},
+      TestCell{"r4", "cf", "q", 3_ms, "f", "TRUE"},
   };
   EXPECT_EQ(expected, *maybe_output);
 }
-
-// TODO(prawilny): ensure that all the row-sensitive filters use something
-// different than "r" as row in the tests.
-// ConditionPartialApplyFilter
 
 }  // namespace emulator
 }  // namespace bigtable
