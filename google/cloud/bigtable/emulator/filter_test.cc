@@ -67,7 +67,9 @@ class TestCell {
         timestamp_(std::move(timestamp)),
         value_(std::move(value)),
         view_(row_key_, column_family_, column_qualifier_, timestamp_, value_),
-        label_(std::move(label)) {}
+        label_(std::move(label)) {
+    maybe_label_view();
+  }
 
   TestCell(TestCell const& other)
       : row_key_(other.row_key_),
@@ -76,7 +78,10 @@ class TestCell {
         timestamp_(other.timestamp_),
         value_(other.value_),
         view_(row_key_, column_family_, column_qualifier_, timestamp_, value_),
-        label_(other.label_) {}
+        label_(other.label_) {
+    maybe_label_view();
+  }
+
   TestCell(TestCell&& other) noexcept
       : row_key_(std::move(other.row_key_)),
         column_family_(std::move(other.column_family_)),
@@ -84,21 +89,31 @@ class TestCell {
         timestamp_(std::move(other.timestamp_)),
         value_(std::move(other.value_)),
         view_(row_key_, column_family_, column_qualifier_, timestamp_, value_),
-        label_(std::move(other.label_)) {}
+        label_(std::move(other.label_)) {
+    maybe_label_view();
+  }
+
+  TestCell Labeled(std::string const& label) {
+    TestCell labeled_copy = *this;
+    labeled_copy.label_ = label;
+    labeled_copy.maybe_label_view();
+    return labeled_copy;
+  }
 
   CellView const& AsCellView() const { return view_; }
 
-  std::optional<std::string> Label() const& { return label_; }
-
   bool operator==(CellView const& cell_view) const {
+    bool labels_equal = (!label_.has_value() && !cell_view.HasLabel()) ||
+                        (label_.value() == cell_view.label());
     return row_key_ == cell_view.row_key() &&
            column_family_ == cell_view.column_family() &&
            column_qualifier_ == cell_view.column_qualifier() &&
-           timestamp_ == cell_view.timestamp() && value_ == cell_view.value();
+           timestamp_ == cell_view.timestamp() && value_ == cell_view.value() &&
+           labels_equal;
   }
 
   bool operator==(TestCell const& other) const {
-    return operator==(other.AsCellView()) && label_ == other.label_;
+    return operator==(other.AsCellView());
   }
 
  private:
@@ -108,8 +123,13 @@ class TestCell {
   std::chrono::milliseconds timestamp_;
   std::string value_;
   CellView view_;
-  // TODO(prawilny): deduplicate the label (and/or)
   std::optional<std::string> label_;
+
+  void maybe_label_view() {
+    if (label_) {
+      view_.SetLabel(label_.value());
+    }
+  }
 };
 
 std::ostream& operator<<(std::ostream& stream, TestCell const& test_cell) {
@@ -1281,7 +1301,6 @@ class FilterWorkTest : public ::testing::Test {
     std::vector<TestCell> filter_output;
     while (maybe_stream->HasValue()) {
       auto& v = maybe_stream.value();
-      // TODO(prawilny): simplify it
       filter_output.emplace_back(
           v->row_key(), v->column_family(), v->column_qualifier(),
           v->timestamp(), v->value(),
@@ -1754,8 +1773,8 @@ TEST_F(FilterWorkTest, RegexInterleaveChainLabelSinkRegex) {
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
 
-  TestCell labeled0("r", "A", "A", 1_ms, "w", "foo");
-  TestCell labeled1("r", "A", "B", 2_ms, "x", "foo");
+  TestCell labeled0 = cells[0].Labeled("foo");
+  TestCell labeled1 = cells[1].Labeled("foo");
 
   ASSERT_EQ(3, maybe_output->size());
   EXPECT_EQ(labeled0, maybe_output->at(0));
@@ -1763,7 +1782,8 @@ TEST_F(FilterWorkTest, RegexInterleaveChainLabelSinkRegex) {
               maybe_output->at(1) == cells[1]);
   EXPECT_TRUE(maybe_output->at(2) == labeled1 ||
               maybe_output->at(2) == cells[1]);
-  EXPECT_NE(maybe_output->at(1).Label(), maybe_output->at(2).Label());
+  EXPECT_NE(maybe_output->at(1).AsCellView().HasLabel(),
+            maybe_output->at(2).AsCellView().HasLabel());
 }
 
 TEST_F(FilterWorkTest, ConditionEmptyNonempty) {
@@ -1796,21 +1816,17 @@ TEST_F(FilterWorkTest, ConditionEmptyNonempty) {
   ASSERT_STATUS_OK(maybe_output);
 
   ASSERT_EQ(cells.size(), maybe_output->size());
-  for (size_t i = 0; i < cells.size(); i++) {
-    EXPECT_EQ(cells[i], maybe_output->at(i).AsCellView());
-  }
-  EXPECT_EQ("TRUE", maybe_output->at(0).Label());
-  EXPECT_EQ("TRUE", maybe_output->at(1).Label());
-  EXPECT_EQ("TRUE", maybe_output->at(2).Label());
-  EXPECT_EQ("TRUE", maybe_output->at(3).Label());
-  EXPECT_EQ("TRUE", maybe_output->at(4).Label());
-  EXPECT_EQ("TRUE", maybe_output->at(5).Label());
-  EXPECT_EQ("FALSE", maybe_output->at(6).Label());
-  EXPECT_EQ("FALSE", maybe_output->at(7).Label());
-  EXPECT_EQ("FALSE", maybe_output->at(8).Label());
-  EXPECT_EQ("TRUE", maybe_output->at(9).Label());
-  EXPECT_EQ("TRUE", maybe_output->at(10).Label());
-  EXPECT_EQ("TRUE", maybe_output->at(11).Label());
+  EXPECT_EQ(cells[1].Labeled("TRUE"), maybe_output->at(1));
+  EXPECT_EQ(cells[2].Labeled("TRUE"), maybe_output->at(2));
+  EXPECT_EQ(cells[3].Labeled("TRUE"), maybe_output->at(3));
+  EXPECT_EQ(cells[4].Labeled("TRUE"), maybe_output->at(4));
+  EXPECT_EQ(cells[5].Labeled("TRUE"), maybe_output->at(5));
+  EXPECT_EQ(cells[6].Labeled("FALSE"), maybe_output->at(6));
+  EXPECT_EQ(cells[7].Labeled("FALSE"), maybe_output->at(7));
+  EXPECT_EQ(cells[8].Labeled("FALSE"), maybe_output->at(8));
+  EXPECT_EQ(cells[9].Labeled("TRUE"), maybe_output->at(9));
+  EXPECT_EQ(cells[10].Labeled("TRUE"), maybe_output->at(10));
+  EXPECT_EQ(cells[11].Labeled("TRUE"), maybe_output->at(11));
 }
 
 TEST_F(FilterWorkTest, ConditionBranchFilterNextDifferentThanCell) {
