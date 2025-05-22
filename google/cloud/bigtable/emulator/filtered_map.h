@@ -25,20 +25,19 @@ namespace cloud {
 namespace bigtable {
 namespace emulator {
 
-// TODO(prawilny): update the docs after the separation
 /**
- * A map view filtering elements by whether their keys fall into a range set.
+ * A map view filtering elements by whether their keys fall into a string range
+ * set.
  *
- * Objects of this type provide a lightweight wrapper around `std::map`, which
- * provides a iterator, which will skip over unwanted elements.
+ * Objects of this type provide a lightweight wrapper around `std::map`-like
+ * object, which provides a iterator, which will skip over unwanted elements.
  *
  * This class is not very generic. It should be thought of as a crude way of
  * deduplicating code.
  *
- * The unfiltered elements' keys should fall into a given range set - either
- * `StringRangeSet` or by `TimestampRangeSet`.
+ * The unfiltered elements' keys should fall into a given string range set.
  *
- * @tparam Map the type of the map to be wrapped, an instantiation of `std::map`
+ * @tparam Map the type of the map-like object to be wrapped.
  */
 template <typename Map>
 class StringRangeFilteredMapView {
@@ -167,7 +166,23 @@ class StringRangeFilteredMapView {
   std::reference_wrapper<StringRangeSet const> filter_;
 };
 
-// TODO(prawilny): add docs, mention that it's sorted high-to-low.
+/**
+ * A map view filtering elements by whether their keys fall into a timestamp
+ * range set.
+ *
+ * Objects of this type provide a lightweight wrapper around `std::map`-like
+ * object, which provides a iterator, which will skip over unwanted elements.
+ *
+ * This class is not very generic. It should be thought of as a crude way of
+ * deduplicating code.
+ *
+ * The unfiltered elements' keys should fall into a given timestamp range set.
+ *
+ * Note that the implementation assumes that the input `std::map`-like object's
+ * iterator is sorted high-to-low.
+ *
+ * @tparam Map the type of the map-like object to be wrapped.
+ */
 template <typename Map>
 class TimestampRangeFilteredMapView {
  public:
@@ -298,15 +313,15 @@ class TimestampRangeFilteredMapView {
 /**
  * A map view filtering elements by whether their keys match a regex.
  *
- * Objects of this type provide a lightweight wrapper around `std::map`, which
- * provides a iterator, which will skip over unwanted elements.
+ * Objects of this type provide a lightweight wrapper around `std::map`-like
+ * object, which provides a iterator, which will skip over unwanted elements.
  *
  * This class is not very generic. It should be thought of as a crude way of
  * deduplicating code.
  *
  * Elements whose keys match all regexes are not filtered out.
  *
- * @tparam Map the type of the map to be wrapped, an instantiation of `std::map`
+ * @tparam Map the type of the map-like object to be wrapped.
  */
 template <typename Map>
 class RegexFiteredMapView {
