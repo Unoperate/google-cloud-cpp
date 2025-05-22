@@ -108,6 +108,7 @@ class TestCell {
   std::chrono::milliseconds timestamp_;
   std::string value_;
   CellView view_;
+  // TODO(prawilny): deduplicate the label (and/or)
   std::optional<std::string> label_;
 };
 
@@ -1280,6 +1281,7 @@ class FilterWorkTest : public ::testing::Test {
     std::vector<TestCell> filter_output;
     while (maybe_stream->HasValue()) {
       auto& v = maybe_stream.value();
+      // TODO(prawilny): simplify it
       filter_output.emplace_back(
           v->row_key(), v->column_family(), v->column_qualifier(),
           v->timestamp(), v->value(),
@@ -1299,6 +1301,21 @@ TEST_F(FilterWorkTest, Pass) {
       TestCell{"r1", "cf", "q", 0_ms, "v"},
       TestCell{"r2", "cf", "q", 0_ms, "v"},
       TestCell{"r2", "cf", "q", 0_ms, "v"},
+  };
+  auto maybe_output = GetFilterOutput(std::move(cells), filter);
+  ASSERT_STATUS_OK(maybe_output);
+
+  EXPECT_EQ(cells, *maybe_output);
+}
+
+TEST_F(FilterWorkTest, PassLabels) {
+  RowFilter filter;
+  filter.set_pass_all_filter(true);
+
+  std::vector<TestCell> cells{
+      TestCell{"r", "cf", "q", 0_ms, "v", "label1"},
+      TestCell{"r", "cf", "q", 0_ms, "v", "label2"},
+      TestCell{"r", "cf", "q", 0_ms, "v", "label3"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);

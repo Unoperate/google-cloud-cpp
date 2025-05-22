@@ -179,7 +179,7 @@ TEST(TimestampRangeFilteredMapView, InfiniteRange) {
   EXPECT_EQ(std::vector({4_ms, 3_ms, 2_ms, 1_ms}), TSKeys(filtered));
 }
 
-TEST(TimestampRangeFilteredMapView, MultipleFiltersFinite) {
+TEST(TimestampRangeFilteredMapView, MultipleFilters) {
   std::chrono::milliseconds max_millis(std::numeric_limits<int64_t>::max());
   std::map<std::chrono::milliseconds, int, std::greater<>> unfiltered{
       {0_ms, 0},  {1_ms, 0},  {2_ms, 0},  {3_ms, 0},
