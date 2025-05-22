@@ -35,8 +35,6 @@ namespace cloud {
 namespace bigtable {
 namespace emulator {
 
-// TODO(prawilny): remove open/close variants of methods
-
 /**
  * Objects of this class hold a sorted, disjoint set of string ranges.
  *
