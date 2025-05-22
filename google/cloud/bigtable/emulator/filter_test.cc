@@ -1451,8 +1451,6 @@ TEST_F(FilterWorkTest, CellsPerRowOffset) {
   RowFilter filter;
   filter.set_cells_per_row_offset_filter(1);
 
-  // TODO(prawilny): write multiple test cases here - basically test
-  // lexicographic sorting of all the tuple elements (r, cf, q, ts).
   std::vector<TestCell> cells{
       TestCell{"r1", "cf1", "q", 0_ms, "v"},
       TestCell{"r1", "cf2", "q", 0_ms, "v"},
@@ -1462,15 +1460,17 @@ TEST_F(FilterWorkTest, CellsPerRowOffset) {
       TestCell{"r3", "cf", "q", 1_ms, "v"},
       TestCell{"r4", "cf", "q", 0_ms, "v"},
       TestCell{"r4", "cf", "q", 0_ms, "v"},
+      TestCell{"r4", "cf", "q", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
 
-  ASSERT_EQ(4, maybe_output->size());
+  ASSERT_EQ(5, maybe_output->size());
   EXPECT_EQ(cells[1], maybe_output->at(0));
   EXPECT_EQ(cells[3], maybe_output->at(1));
   EXPECT_EQ(cells[5], maybe_output->at(2));
   EXPECT_EQ(cells[7], maybe_output->at(3));
+  EXPECT_EQ(cells[8], maybe_output->at(4));
 }
 
 TEST_F(FilterWorkTest, CellsPerRowLimit) {
