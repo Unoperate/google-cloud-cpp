@@ -1303,9 +1303,7 @@ TEST_F(FilterWorkTest, Pass) {
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q", 0_ms, "v"},
-      // Next row
       TestCell{"r2", "cf", "q", 0_ms, "v"},
-      // Next cell
       TestCell{"r2", "cf", "q", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
@@ -1337,7 +1335,6 @@ TEST_F(FilterWorkTest, Block) {
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q", 0_ms, "v"},
-      // Next cell
       TestCell{"r1", "cf", "q", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
@@ -1352,11 +1349,8 @@ TEST_F(FilterWorkTest, RowRegex) {
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q", 0_ms, "v"},
-      // Next row
       TestCell{"r2", "cf", "q", 0_ms, "v"},
-      // Next cell
       TestCell{"r2", "cf", "q", 0_ms, "v"},
-      // Next row
       TestCell{"r3", "cf", "q", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
@@ -1373,9 +1367,7 @@ TEST_F(FilterWorkTest, ValueRegex) {
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q", 0_ms, "v1"},
-      // Next row
       TestCell{"r2", "cf", "q", 0_ms, "v2"},
-      // Next Cell
       TestCell{"r2", "cf", "q", 0_ms, "v3"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
@@ -1408,11 +1400,8 @@ TEST_F(FilterWorkTest, FamilyNameRegex) {
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf1", "q", 0_ms, "v"},
-      // Next row
       TestCell{"r2", "cf2", "q", 0_ms, "v"},
-      // Next cell
       TestCell{"r2", "cf2", "q", 0_ms, "v"},
-      // Next cf
       TestCell{"r2", "cf3", "q", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
@@ -1429,11 +1418,8 @@ TEST_F(FilterWorkTest, QualifierRegex) {
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q1", 0_ms, "v"},
-      // Next row
       TestCell{"r2", "cf", "q2", 0_ms, "v"},
-      // Next cell
       TestCell{"r2", "cf", "q2", 0_ms, "v"},
-      // Next column
       TestCell{"r2", "cf", "q3", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
@@ -1453,12 +1439,15 @@ TEST_F(FilterWorkTest, ColumnRange) {
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q1", 0_ms, "v"},
       TestCell{"r2", "cf", "q2", 0_ms, "v"},
+      TestCell{"r2", "cf", "q2", 0_ms, "v"},
+      TestCell{"r2", "cf", "q3", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
 
-  ASSERT_EQ(1, maybe_output->size());
+  ASSERT_EQ(2, maybe_output->size());
   EXPECT_EQ(cells[1], maybe_output->at(0));
+  EXPECT_EQ(cells[2], maybe_output->at(1));
 }
 
 TEST_F(FilterWorkTest, ValueRange) {
@@ -1469,12 +1458,15 @@ TEST_F(FilterWorkTest, ValueRange) {
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q", 0_ms, "v1"},
       TestCell{"r2", "cf", "q", 0_ms, "v2"},
+      TestCell{"r2", "cf", "q", 0_ms, "v2"},
+      TestCell{"r3", "cf", "q", 0_ms, "v3"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
 
-  ASSERT_EQ(1, maybe_output->size());
+  ASSERT_EQ(2, maybe_output->size());
   EXPECT_EQ(cells[1], maybe_output->at(0));
+  EXPECT_EQ(cells[2], maybe_output->at(1));
 }
 
 TEST_F(FilterWorkTest, CellsPerRowOffset) {
@@ -1514,14 +1506,17 @@ TEST_F(FilterWorkTest, CellsPerRowLimit) {
       TestCell{"r2", "cf", "q2", 0_ms, "v"},
       TestCell{"r3", "cf", "q", 2_ms, "v"},
       TestCell{"r3", "cf", "q", 1_ms, "v"},
+      TestCell{"r4", "cf", "q", 0_ms, "v"},
+      TestCell{"r4", "cf", "q", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
 
-  ASSERT_EQ(3, maybe_output->size());
+  ASSERT_EQ(4, maybe_output->size());
   EXPECT_EQ(cells[0], maybe_output->at(0));
   EXPECT_EQ(cells[2], maybe_output->at(1));
   EXPECT_EQ(cells[4], maybe_output->at(2));
+  EXPECT_EQ(cells[6], maybe_output->at(3));
 }
 
 TEST_F(FilterWorkTest, LatestCellsPerColumnLimit) {
@@ -1575,14 +1570,16 @@ TEST_F(FilterWorkTest, Label) {
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q", 0_ms, "v"},
+      TestCell{"r1", "cf", "q", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
 
   TestCell expected{"r1", "cf", "q", 0_ms, "v", label};
 
-  ASSERT_EQ(1, maybe_output->size());
+  ASSERT_EQ(2, maybe_output->size());
   EXPECT_EQ(expected, maybe_output->at(0));
+  EXPECT_EQ(expected, maybe_output->at(1));
 }
 
 TEST_F(FilterWorkTest, StripValue) {
@@ -1591,14 +1588,16 @@ TEST_F(FilterWorkTest, StripValue) {
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q", 0_ms, "v"},
+      TestCell{"r1", "cf", "q", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
 
   TestCell expected{"r1", "cf", "q", 0_ms, ""};
 
-  ASSERT_EQ(1, maybe_output->size());
+  ASSERT_EQ(2, maybe_output->size());
   EXPECT_EQ(expected, maybe_output->at(0));
+  EXPECT_EQ(expected, maybe_output->at(1));
 }
 
 TEST_F(FilterWorkTest, Chain) {
@@ -1633,6 +1632,7 @@ TEST_F(FilterWorkTest, ChainEmpty) {
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q", 0_ms, "v"},
       TestCell{"r2", "cf", "q", 0_ms, "v"},
+      TestCell{"r2", "cf", "q", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
@@ -1647,6 +1647,7 @@ TEST_F(FilterWorkTest, ChainSink) {
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q", 0_ms, "v"},
+      TestCell{"r2", "cf", "q", 0_ms, "v"},
       TestCell{"r2", "cf", "q", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
@@ -1664,6 +1665,7 @@ TEST_F(FilterWorkTest, Interleave) {
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf1", "q", 0_ms, "v"},
+      TestCell{"r2", "cf2", "q", 0_ms, "v"},
       TestCell{"r2", "cf2", "q", 0_ms, "v"},
       TestCell{"r3", "cf1", "q", 0_ms, "v"},
   };
@@ -1698,14 +1700,16 @@ TEST_F(FilterWorkTest, InterleaveSink) {
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q", 0_ms, "v"},
       TestCell{"r2", "cf", "q", 0_ms, "v"},
+      TestCell{"r2", "cf", "q", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
 
   ASSERT_EQ(cells.size() * 4, maybe_output->size());
-  for (size_t i = 0; i < maybe_output->size() / 2; i++) {
+  for (size_t i = 0; i < maybe_output->size() / 3; i++) {
     EXPECT_EQ(cells[0], maybe_output->at(i));
-    EXPECT_EQ(cells[1], maybe_output->at(i + maybe_output->size() / 2));
+    EXPECT_EQ(cells[1], maybe_output->at(i + maybe_output->size() / 3));
+    EXPECT_EQ(cells[2], maybe_output->at(i + 2 * maybe_output->size() / 3));
   }
 }
 
