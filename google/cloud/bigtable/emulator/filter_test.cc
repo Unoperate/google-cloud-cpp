@@ -104,7 +104,8 @@ class TestCell {
 
   bool operator==(CellView const& cell_view) const {
     bool labels_equal = (!label_.has_value() && !cell_view.HasLabel()) ||
-                        (label_.value() == cell_view.label());
+                        (label_.has_value() && cell_view.HasLabel() &&
+                         label_.value() == cell_view.label());
     return row_key_ == cell_view.row_key() &&
            column_family_ == cell_view.column_family() &&
            column_qualifier_ == cell_view.column_qualifier() &&
