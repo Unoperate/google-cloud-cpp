@@ -1291,12 +1291,6 @@ class FilterWorkTest : public ::testing::Test {
   }
 };
 
-// TODO(prawilny): verify that these tests DO test if correct NextMode is
-// returned by the filters. (CHECK IF APPROPRIATE THINGS ARE)
-// ^basically we need to check that lowest granularity next is used (and if its not kcell, then we need to ensure that they're skipped)
-// TODO(prawilny): ensure that all the row-sensitive filters use something
-// different than "r" as row in the tests.
-
 TEST_F(FilterWorkTest, Pass) {
   RowFilter filter;
   filter.set_pass_all_filter(true);
