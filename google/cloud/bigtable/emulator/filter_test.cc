@@ -1303,7 +1303,7 @@ TEST_F(FilterWorkTest, Pass) {
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q", 0_ms, "v"},
-      // New row
+      // Next row
       TestCell{"r2", "cf", "q", 0_ms, "v"},
       // Next cell
       TestCell{"r2", "cf", "q", 0_ms, "v"},
@@ -1320,7 +1320,7 @@ TEST_F(FilterWorkTest, Sink) {
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q", 0_ms, "v"},
-      // New row
+      // Next row
       TestCell{"r2", "cf", "q", 0_ms, "v"},
       // Next cell
       TestCell{"r2", "cf", "q", 0_ms, "v"},
@@ -1337,8 +1337,8 @@ TEST_F(FilterWorkTest, Block) {
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q", 0_ms, "v"},
-      // New row
-      TestCell{"r2", "cf", "q", 0_ms, "v"},
+      // Next cell
+      TestCell{"r1", "cf", "q", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
@@ -1352,11 +1352,11 @@ TEST_F(FilterWorkTest, RowRegex) {
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q", 0_ms, "v"},
-      // Matching row
+      // Next row
       TestCell{"r2", "cf", "q", 0_ms, "v"},
       // Next cell
       TestCell{"r2", "cf", "q", 0_ms, "v"},
-      // Non-matching row
+      // Next row
       TestCell{"r3", "cf", "q", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
@@ -1369,11 +1369,14 @@ TEST_F(FilterWorkTest, RowRegex) {
 
 TEST_F(FilterWorkTest, ValueRegex) {
   RowFilter filter;
-  filter.set_value_regex_filter("2");
+  filter.set_value_regex_filter("v2");
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q", 0_ms, "v1"},
+      // Next row
       TestCell{"r2", "cf", "q", 0_ms, "v2"},
+      // Next Cell
+      TestCell{"r2", "cf", "q", 0_ms, "v3"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
@@ -1401,17 +1404,23 @@ TEST_F(FilterWorkTest, SampleRows) {
 
 TEST_F(FilterWorkTest, FamilyNameRegex) {
   RowFilter filter;
-  filter.set_family_name_regex_filter("2");
+  filter.set_family_name_regex_filter("cf2");
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf1", "q", 0_ms, "v"},
+      // Next row
       TestCell{"r2", "cf2", "q", 0_ms, "v"},
+      // Next cell
+      TestCell{"r2", "cf2", "q", 0_ms, "v"},
+      // Next cf
+      TestCell{"r2", "cf3", "q", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
 
-  ASSERT_EQ(1, maybe_output->size());
+  ASSERT_EQ(2, maybe_output->size());
   EXPECT_EQ(cells[1], maybe_output->at(0));
+  EXPECT_EQ(cells[2], maybe_output->at(1));
 }
 
 TEST_F(FilterWorkTest, QualifierRegex) {
