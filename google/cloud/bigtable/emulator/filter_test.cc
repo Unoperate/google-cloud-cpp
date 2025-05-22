@@ -1425,17 +1425,23 @@ TEST_F(FilterWorkTest, FamilyNameRegex) {
 
 TEST_F(FilterWorkTest, QualifierRegex) {
   RowFilter filter;
-  filter.set_column_qualifier_regex_filter("2");
+  filter.set_column_qualifier_regex_filter("q2");
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q1", 0_ms, "v"},
+      // Next row
       TestCell{"r2", "cf", "q2", 0_ms, "v"},
+      // Next cell
+      TestCell{"r2", "cf", "q2", 0_ms, "v"},
+      // Next column
+      TestCell{"r2", "cf", "q3", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
 
-  ASSERT_EQ(1, maybe_output->size());
+  ASSERT_EQ(2, maybe_output->size());
   EXPECT_EQ(cells[1], maybe_output->at(0));
+  EXPECT_EQ(cells[2], maybe_output->at(1));
 }
 
 TEST_F(FilterWorkTest, ColumnRange) {
