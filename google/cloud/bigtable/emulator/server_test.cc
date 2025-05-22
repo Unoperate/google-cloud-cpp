@@ -18,7 +18,6 @@
 #include <google/bigtable/admin/v2/table.pb.h>
 #include <google/bigtable/v2/bigtable.grpc.pb.h>
 #include <google/bigtable/v2/bigtable.pb.h>
-#include <google/iam/v1/iam_policy.grpc.pb.h>
 #include <gmock/gmock.h>
 #include <grpcpp/grpcpp.h>
 
