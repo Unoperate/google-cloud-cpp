@@ -1498,7 +1498,6 @@ TEST_F(FilterWorkTest, LatestCellsPerColumnLimit) {
   RowFilter filter;
   filter.set_cells_per_column_limit_filter(1);
 
-  // TODO(prawilny): expand this test case - ensure correct next() return value.
   std::vector<TestCell> cells{
       TestCell{"r1", "cf1", "q", 0_ms, "v"},
       TestCell{"r1", "cf2", "q", 0_ms, "v"},
@@ -1506,16 +1505,20 @@ TEST_F(FilterWorkTest, LatestCellsPerColumnLimit) {
       TestCell{"r2", "cf", "q2", 0_ms, "v"},
       TestCell{"r3", "cf", "q", 2_ms, "v"},
       TestCell{"r3", "cf", "q", 1_ms, "v"},
+      TestCell{"r4", "cf", "q", 0_ms, "v"},
+      TestCell{"r4", "cf", "q", 0_ms, "v"},
+      TestCell{"r4", "cf", "q", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
 
-  ASSERT_EQ(5, maybe_output->size());
+  ASSERT_EQ(6, maybe_output->size());
   EXPECT_EQ(cells[0], maybe_output->at(0));
   EXPECT_EQ(cells[1], maybe_output->at(1));
   EXPECT_EQ(cells[2], maybe_output->at(2));
   EXPECT_EQ(cells[3], maybe_output->at(3));
   EXPECT_EQ(cells[4], maybe_output->at(4));
+  EXPECT_EQ(cells[6], maybe_output->at(5));
 }
 
 TEST_F(FilterWorkTest, TimestampRange) {
