@@ -1292,7 +1292,8 @@ class FilterWorkTest : public ::testing::Test {
 };
 
 // TODO(prawilny): verify that these tests DO test if correct NextMode is
-// returned by the filters.
+// returned by the filters. (CHECK IF APPROPRIATE THINGS ARE)
+// ^basically we need to check that lowest granularity next is used (and if its not kcell, then we need to ensure that they're skipped)
 // TODO(prawilny): ensure that all the row-sensitive filters use something
 // different than "r" as row in the tests.
 
@@ -1302,6 +1303,9 @@ TEST_F(FilterWorkTest, Pass) {
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q", 0_ms, "v"},
+      // New row
+      TestCell{"r2", "cf", "q", 0_ms, "v"},
+      // Next cell
       TestCell{"r2", "cf", "q", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
@@ -1316,6 +1320,9 @@ TEST_F(FilterWorkTest, Sink) {
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q", 0_ms, "v"},
+      // New row
+      TestCell{"r2", "cf", "q", 0_ms, "v"},
+      // Next cell
       TestCell{"r2", "cf", "q", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
@@ -1330,6 +1337,8 @@ TEST_F(FilterWorkTest, Block) {
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q", 0_ms, "v"},
+      // New row
+      TestCell{"r2", "cf", "q", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
@@ -1343,13 +1352,19 @@ TEST_F(FilterWorkTest, RowRegex) {
 
   std::vector<TestCell> cells{
       TestCell{"r1", "cf", "q", 0_ms, "v"},
+      // Matching row
       TestCell{"r2", "cf", "q", 0_ms, "v"},
+      // Next cell
+      TestCell{"r2", "cf", "q", 0_ms, "v"},
+      // Non-matching row
+      TestCell{"r3", "cf", "q", 0_ms, "v"},
   };
   auto maybe_output = GetFilterOutput(std::move(cells), filter);
   ASSERT_STATUS_OK(maybe_output);
 
-  ASSERT_EQ(1, maybe_output->size());
+  ASSERT_EQ(2, maybe_output->size());
   EXPECT_EQ(cells[1], maybe_output->at(0));
+  EXPECT_EQ(cells[2], maybe_output->at(1));
 }
 
 TEST_F(FilterWorkTest, ValueRegex) {
