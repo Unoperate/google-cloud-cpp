@@ -101,7 +101,7 @@ absl::optional<std::string> ColumnFamilyRow::SetCell(
 absl::optional<std::string> ColumnFamilyRow::UpdateCell(
     std::string const& column_qualifier, std::chrono::milliseconds timestamp,
     std::string const& value,
-    std::function<std::string(std::string const&, std::string const&)>
+    std::function<std::string(std::string const&, std::string const&)> const&
         update_fn) {
   return columns_[column_qualifier].UpdateCell(timestamp, value,
                                                std::move(update_fn));

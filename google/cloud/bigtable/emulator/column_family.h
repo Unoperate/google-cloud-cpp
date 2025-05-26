@@ -150,7 +150,7 @@ class ColumnFamilyRow {
   absl::optional<std::string> UpdateCell(
       std::string const& column_qualifier, std::chrono::milliseconds timestamp,
       std::string const& value,
-      std::function<std::string(std::string const&, std::string const&)>
+      std::function<std::string(std::string const&, std::string const&)> const&
           update_fn);
 
   /**
