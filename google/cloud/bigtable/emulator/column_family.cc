@@ -42,16 +42,16 @@ absl::optional<std::string> ColumnRow::SetCell(
   return ret;
 }
 
-absl::optional<std::string> ColumnRow::SetCell(
+absl::optional<std::string> ColumnRow::UpdateCell(
     std::chrono::milliseconds timestamp, std::string const& value,
     std::function<std::string(std::string const&, std::string const&)> const&
-        update_cell_fn) {
+        update_fn) {
   absl::optional<std::string> ret = absl::nullopt;
 
   auto cell_it = cells_.find(timestamp);
   if (!(cell_it == cells_.end())) {
     ret = std::move(cell_it->second);
-    cells_[timestamp] = update_cell_fn(ret.value(), value);
+    cells_[timestamp] = update_fn(ret.value(), value);
     return ret;
   }
 
@@ -98,12 +98,13 @@ absl::optional<std::string> ColumnFamilyRow::SetCell(
   return columns_[column_qualifier].SetCell(timestamp, value);
 }
 
-absl::optional<std::string> ColumnFamilyRow::SetCell(
+absl::optional<std::string> ColumnFamilyRow::UpdateCell(
     std::string const& column_qualifier, std::chrono::milliseconds timestamp,
     std::string const& value,
-    std::function<std::string(std::string const&, std::string const&)> const&
-        update_cell_fn) {
-  return columns_[column_qualifier].SetCell(timestamp, value, update_cell_fn);
+    std::function<std::string(std::string const&, std::string const&)>
+        update_fn) {
+  return columns_[column_qualifier].UpdateCell(timestamp, value,
+                                               std::move(update_fn));
 }
 
 std::vector<Cell> ColumnFamilyRow::DeleteColumn(
@@ -141,19 +142,12 @@ absl::optional<std::string> ColumnFamily::SetCell(
   return rows_[row_key].SetCell(column_qualifier, timestamp, value);
 }
 
-absl::optional<std::string> ColumnFamily::SetCell(
+absl::optional<std::string> ColumnFamily::UpdateCell(
     std::string const& row_key, std::string const& column_qualifier,
-    std::chrono::milliseconds timestamp, std::string const& value,
-    std::function<std::string(std::string const&, std::string const&)> const&
-        update_cell_fn) {
-  // FIXME: Also to support aggregation of complex types, we
-  // definitely also need an InitializeCell_ function since some
-  // aggregation types may require special treatment of an initial
-  // value. However for now the aggregations that we support, Sum, Min
-  // and Max do not require this.
-  return rows_[row_key].SetCell(column_qualifier, timestamp, value,
-                                update_cell_fn);
+    std::chrono::milliseconds timestamp, std::string const& value) {
+  return rows_[row_key].UpdateCell(column_qualifier, timestamp, value, UpdateCell_);
 }
+
 
 std::map<std::string, std::vector<Cell>> ColumnFamily::DeleteRow(
     std::string const& row_key) {
