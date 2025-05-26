@@ -145,9 +145,9 @@ absl::optional<std::string> ColumnFamily::SetCell(
 absl::optional<std::string> ColumnFamily::UpdateCell(
     std::string const& row_key, std::string const& column_qualifier,
     std::chrono::milliseconds timestamp, std::string const& value) {
-  return rows_[row_key].UpdateCell(column_qualifier, timestamp, value, UpdateCell_);
+  return rows_[row_key].UpdateCell(column_qualifier, timestamp, value,
+                                   UpdateCell_);
 }
-
 
 std::map<std::string, std::vector<Cell>> ColumnFamily::DeleteRow(
     std::string const& row_key) {
@@ -333,7 +333,8 @@ bool FilteredColumnFamilyStream::PointToFirstCellAfterRowChange() const {
   return false;
 }
 
-StatusOr<std::shared_ptr<ColumnFamily>> ColumnFamily::ConstructAggregateColumnFamily(
+StatusOr<std::shared_ptr<ColumnFamily>>
+ColumnFamily::ConstructAggregateColumnFamily(
     google::bigtable::admin::v2::Type value_type) {
   auto cf = std::make_shared<ColumnFamily>();
 

@@ -150,7 +150,8 @@ class ColumnFamilyRow {
   absl::optional<std::string> UpdateCell(
       std::string const& column_qualifier, std::chrono::milliseconds timestamp,
       std::string const& value,
-      std::function<std::string(std::string const&, std::string const&)> update_fn);
+      std::function<std::string(std::string const&, std::string const&)>
+          update_fn);
 
   /**
    * Delete cells falling into a given timestamp range in one column.
@@ -250,15 +251,15 @@ class ColumnFamily {
                                       std::string const& value);
 
   /**
-  * UpdateCell is like SetCell except that, when a cell exists with
-  * the same timestamp, an update function (that depends on the column
-  * family type) is called to derive a new value from the new and
-  * existing value, and that is the value that is written.
-  *
-  * Simple (non-aggregate) column families have a default update
-  * function that just returns the new value.
-  *
-  */
+   * UpdateCell is like SetCell except that, when a cell exists with
+   * the same timestamp, an update function (that depends on the column
+   * family type) is called to derive a new value from the new and
+   * existing value, and that is the value that is written.
+   *
+   * Simple (non-aggregate) column families have a default update
+   * function that just returns the new value.
+   *
+   */
   absl::optional<std::string> UpdateCell(std::string const& row_key,
                                          std::string const& column_qualifier,
                                          std::chrono::milliseconds timestamp,
