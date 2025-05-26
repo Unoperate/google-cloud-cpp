@@ -416,7 +416,7 @@ class ColumnFamily {
   };
 
   std::function<std::string(std::string const&, std::string const&)>
-      UpdateCell_ = DefaultUpdateCell;
+      update_cell_ = DefaultUpdateCell;
 };
 
 /**

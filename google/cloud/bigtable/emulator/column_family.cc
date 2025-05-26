@@ -146,7 +146,7 @@ absl::optional<std::string> ColumnFamily::UpdateCell(
     std::string const& row_key, std::string const& column_qualifier,
     std::chrono::milliseconds timestamp, std::string const& value) {
   return rows_[row_key].UpdateCell(column_qualifier, timestamp, value,
-                                   UpdateCell_);
+                                   update_cell_);
 }
 
 std::map<std::string, std::vector<Cell>> ColumnFamily::DeleteRow(
@@ -342,13 +342,13 @@ ColumnFamily::ConstructAggregateColumnFamily(
     auto const& aggregate_type = value_type.aggregate_type();
     switch (aggregate_type.aggregator_case()) {
       case google::bigtable::admin::v2::Type::Aggregate::kSum:
-        cf->UpdateCell_ = cf->SumUpdateCellBEInt64;
+        cf->update_cell_ = cf->SumUpdateCellBEInt64;
         break;
       case google::bigtable::admin::v2::Type::Aggregate::kMin:
-        cf->UpdateCell_ = cf->MinUpdateCellBEInt64;
+        cf->update_cell_ = cf->MinUpdateCellBEInt64;
         break;
       case google::bigtable::admin::v2::Type::Aggregate::kMax:
-        cf->UpdateCell_ = cf->MaxUpdateCellBEInt64;
+        cf->update_cell_ = cf->MaxUpdateCellBEInt64;
         break;
       default:
         return InvalidArgumentError(
