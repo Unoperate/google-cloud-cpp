@@ -236,7 +236,7 @@ class ColumnFamily {
   // ColumnFamily that can support AddToCell or MergeToCell and
   // similar aggregate complex types. To construct an ordinary
   // ColumnFamily, use the default constructor ColumnFamily().
-  friend StatusOr<std::shared_ptr<ColumnFamily>> ConstructAggregateColumnFamily(
+  static StatusOr<std::shared_ptr<ColumnFamily>> ConstructAggregateColumnFamily(
       google::bigtable::admin::v2::Type value_type);
 
   // Disable copying.
@@ -437,9 +437,6 @@ class ColumnFamily {
   std::function<std::string(std::string const&, std::string const&)>
       UpdateCell_ = DefaultUpdateCell;
 };
-
-StatusOr<std::shared_ptr<ColumnFamily>> ConstructAggregateColumnFamily(
-    google::bigtable::admin::v2::Type value_type);
 
 /**
  * A stream of cells which allows for filtering unwanted ones.

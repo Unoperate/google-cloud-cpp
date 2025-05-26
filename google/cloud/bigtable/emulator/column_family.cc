@@ -339,7 +339,7 @@ bool FilteredColumnFamilyStream::PointToFirstCellAfterRowChange() const {
   return false;
 }
 
-StatusOr<std::shared_ptr<ColumnFamily>> ConstructAggregateColumnFamily(
+StatusOr<std::shared_ptr<ColumnFamily>> ColumnFamily::ConstructAggregateColumnFamily(
     google::bigtable::admin::v2::Type value_type) {
   auto cf = std::make_shared<ColumnFamily>();
 

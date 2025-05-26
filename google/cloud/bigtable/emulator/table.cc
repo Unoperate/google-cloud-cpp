@@ -97,7 +97,7 @@ Status Table::Construct(google::bigtable::admin::v2::Table schema) {
     }
 
     if (opt_value_type.has_value()) {
-      auto cf = ConstructAggregateColumnFamily(opt_value_type.value());
+      auto cf = ColumnFamily::ConstructAggregateColumnFamily(opt_value_type.value());
       if (!cf) {
         return cf.status();
       }
@@ -187,7 +187,7 @@ StatusOr<btadmin::Table> Table::ModifyColumnFamilies(
       // Have we been asked to create an aggregate column family?
       if (modification.create().has_value_type()) {
         auto value_type = modification.create().value_type();
-        auto maybe_cf = ConstructAggregateColumnFamily(value_type);
+        auto maybe_cf = ColumnFamily::ConstructAggregateColumnFamily(value_type);
         if (!maybe_cf) {
           return maybe_cf.status();
         }
