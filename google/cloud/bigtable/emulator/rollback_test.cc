@@ -102,7 +102,7 @@ StatusOr<std::shared_ptr<Table>> CreateTable(
   ::google::bigtable::admin::v2::Table schema;
 
   schema.set_name(table_name);
-  for (const auto& cf : column_families) {
+  for (auto const& cf : column_families) {
     (*schema.mutable_column_families())[cf.first] = cf.second;
   }
 
