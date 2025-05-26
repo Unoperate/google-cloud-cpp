@@ -163,11 +163,11 @@ std::map<std::string, std::vector<Cell>> ColumnFamily::DeleteRow(
     ::google::bigtable::v2::TimestampRange time_range;
     auto deleted_cells = column.second.DeleteTimeRange(time_range);
     if (!deleted_cells.empty()) {
-      res[std::move(column.first)] = std::move(deleted_cells);
+      res[column.first] = std::move(deleted_cells);
     }
   }
 
-  rows_.erase(row_key);
+  rows_.erase(row_it);
 
   return res;
 }
