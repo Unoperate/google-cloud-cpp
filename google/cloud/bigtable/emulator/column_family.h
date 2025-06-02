@@ -19,11 +19,17 @@
 #include "google/cloud/bigtable/emulator/filter.h"
 #include "google/cloud/bigtable/emulator/filtered_map.h"
 #include "google/cloud/bigtable/emulator/range_set.h"
+#include "google/cloud/bigtable/read_modify_write_rule.h"
+#include "google/cloud/internal/big_endian.h"
+#include "google/cloud/internal/make_status.h"
 #include "absl/types/optional.h"
 #include <google/bigtable/admin/v2/table.pb.h>
 #include <google/bigtable/v2/data.pb.h>
 #include <chrono>
 #include <map>
+#include <memory>
+#include <optional>
+#include <sstream>
 
 namespace google {
 namespace cloud {
@@ -33,6 +39,24 @@ namespace emulator {
 struct Cell {
   std::chrono::milliseconds timestamp;
   std::string value;
+};
+
+// ReadModifyWriteCellResult supports undo and return value
+// construction for the ReadWriteModify RPC.
+//
+// The timestamp and value written are always returned in timestamp
+// and value and will be used to construct the Row returned by the
+// RPC.
+//
+// If maybe_old_value has a value, then a timestamp was overwritten
+// and the ReadModifyWriteCellResult will be used to create a
+// RestoreValue for undo log. Otherwise, a new cell was added and the
+// ReadmodifyWriteCellResult will be used to create a DeleteValue for
+// the undo log.
+struct ReadModifyWriteCellResult {
+  std::chrono::milliseconds timestamp;
+  std::string value;
+  absl::optional<std::string> maybe_old_value;
 };
 
 /**
@@ -46,6 +70,11 @@ class ColumnRow {
   // Disable copying.
   ColumnRow(ColumnRow const&) = delete;
   ColumnRow& operator=(ColumnRow const&) = delete;
+
+
+  StatusOr<ReadModifyWriteCellResult> ReadModifyWrite(std::int64_t inc_value);
+  ReadModifyWriteCellResult ReadModifyWrite(std::string append_value);
+
 
   /**
    * Insert or update and existing cell at a given timestamp.
