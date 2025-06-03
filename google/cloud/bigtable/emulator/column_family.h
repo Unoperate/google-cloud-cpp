@@ -42,7 +42,7 @@ struct Cell {
 };
 
 // ReadModifyWriteCellResult supports undo and return value
-// construction for the ReadWriteModify RPC.
+// construction for the ReadModifyWrite RPC.
 //
 // The timestamp and value written are always returned in timestamp
 // and value and will be used to construct the Row returned by the
