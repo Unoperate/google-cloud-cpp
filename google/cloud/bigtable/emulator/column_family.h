@@ -73,7 +73,8 @@ class ColumnRow {
 
 
   StatusOr<ReadModifyWriteCellResult> ReadModifyWrite(std::int64_t inc_value);
-  ReadModifyWriteCellResult ReadModifyWrite(std::string append_value);
+
+  ReadModifyWriteCellResult ReadModifyWrite(std::string const& append_value);
 
 
   /**
@@ -112,8 +113,12 @@ class ColumnRow {
   bool HasCells() const { return !cells_.empty(); }
   using const_iterator =
       std::map<std::chrono::milliseconds, std::string>::const_iterator;
+  using iterator =
+      std::map<std::chrono::milliseconds, std::string>::iterator;
   const_iterator begin() const { return cells_.begin(); }
   const_iterator end() const { return cells_.end(); }
+  iterator begin() { return cells_.begin(); }
+  iterator end() { return cells_.end(); }
   const_iterator lower_bound(std::chrono::milliseconds timestamp) const {
     return cells_.lower_bound(timestamp);
   }
@@ -145,6 +150,16 @@ class ColumnRow {
  */
 class ColumnFamilyRow {
  public:
+  StatusOr<ReadModifyWriteCellResult> ReadModifyWrite(
+      std::string const& column_qualifier, std::int64_t inc_value) {
+    return columns_[column_qualifier].ReadModifyWrite(inc_value);
+  };
+
+  ReadModifyWriteCellResult ReadModifyWrite(std::string const& column_qualifier,
+                                            std::string const& append_value) {
+    return columns_[column_qualifier].ReadModifyWrite(append_value);
+  }
+
   /**
    * Insert or update and existing cell at a given column and timestamp.
    *
@@ -231,6 +246,18 @@ class ColumnFamily {
 
   using const_iterator = std::map<std::string, ColumnFamilyRow>::const_iterator;
   using iterator = std::map<std::string, ColumnFamilyRow>::iterator;
+
+  StatusOr<ReadModifyWriteCellResult> ReadModifyWrite(
+      std::string const& row_key, std::string const& column_qualifier,
+      std::int64_t inc_value) {
+    return rows_[row_key].ReadModifyWrite(column_qualifier, inc_value);
+  };
+
+  ReadModifyWriteCellResult ReadModifyWrite(std::string const& row_key,
+                                            std::string const& column_qualifier,
+                                            std::string const& append_value) {
+    return rows_[row_key].ReadModifyWrite(column_qualifier, append_value);
+  };
 
   /**
    * Insert or update and existing cell at a given row, column and timestamp.
