@@ -539,6 +539,24 @@ Status Table::DropRowRange(
   return Status();
 }
 
+StatusOr<::google::bigtable::v2::ReadModifyWriteRowResponse>
+Table::ReadModifyWriteRow(
+    google::bigtable::v2::ReadModifyWriteRowRequest const& request) {
+  std::lock_guard<std::mutex> lock(mu_);
+
+  RowTransaction row_transaction(this->get(), request.row_key());
+
+  auto maybe_response = row_transaction.ReadModifyWriteRow(request);
+  if (!maybe_response) {
+    return maybe_response.status();
+  }
+
+  row_transaction.commit();
+
+  return std::move(maybe_response.value());
+}
+
+
 // NOLINTBEGIN(readability-convert-member-functions-to-static)
 Status RowTransaction::AddToCell(
     ::google::bigtable::v2::Mutation_AddToCell const& add_to_cell) {
@@ -680,6 +698,14 @@ Status RowTransaction::SetCell(
   }
 
   return Status();
+}
+
+StatusOr<::google::bigtable::v2::ReadModifyWriteRowResponse>
+RowTransaction::ReadModifyWriteRow(
+    google::bigtable::v2::ReadModifyWriteRowRequest const& request) {
+  return UnimplementedError(
+      "ReadModifyWrite is not yet implemented",
+      GCP_ERROR_INFO().WithMetadata("request", request.DebugString()));
 }
 
 void RowTransaction::Undo() {
