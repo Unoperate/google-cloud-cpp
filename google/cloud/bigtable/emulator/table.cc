@@ -703,9 +703,38 @@ Status RowTransaction::SetCell(
 StatusOr<::google::bigtable::v2::ReadModifyWriteRowResponse>
 RowTransaction::ReadModifyWriteRow(
     google::bigtable::v2::ReadModifyWriteRowRequest const& request) {
-  return UnimplementedError(
-      "ReadModifyWrite is not yet implemented",
-      GCP_ERROR_INFO().WithMetadata("request", request.DebugString()));
+  if (row_key_.empty()) {
+    return InvalidArgumentError(
+        "row key not set",
+        GCP_ERROR_INFO().WithMetadata("request", request.DebugString()));
+  }
+
+  google::bigtable::v2::Row row;
+  for (auto const& rule : request.rules()) {
+    auto maybe_column_family = table_->FindColumnFamily(rule);
+    if (!maybe_column_family) {
+      return maybe_column_family.status();
+    }
+
+    auto& column_family = maybe_column_family->get();
+    if (rule.has_append_value()) {
+      auto result = column_family.ReadModifyWrite(
+          row_key_, rule.column_qualifier(), rule.append_value());
+      if (result.maybe_old_value.has_value()) {
+        // We overwrote a cell, we need to record a RestoreValue in the undo log
+        RestoreValue restore_value{column_family, rule.column_qualifier(),
+                                   result.timestamp,
+                                   std::move(result.maybe_old_value.value())};
+        undo_.emplace(std::move(restore_value));
+      }
+
+    } else if (rule.has_increment_amount()) {
+    } else {
+      return InvalidArgumentError(
+          "either append value or increament amount must be set",
+          GCP_ERROR_INFO().WithMetadata("rule", rule.DebugString()));
+    }
+  }
 }
 
 void RowTransaction::Undo() {
