@@ -771,7 +771,7 @@ RowTransaction::ReadModifyWriteRow(
           row_key_, rule.column_qualifier(), result.timestamp, result.value);
     } else {
       return InvalidArgumentError(
-          "either append value or increament amount must be set",
+          "either append value or increment amount must be set",
           GCP_ERROR_INFO().WithMetadata("rule", rule.DebugString()));
     }
   }

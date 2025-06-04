@@ -199,7 +199,7 @@ class ColumnFamilyRow {
    * @return Cell representing deleted cell, if there was a cell with
    *     that timestamp in then given column,  otherwise absl::nullopt.
    */
-  absl::optional<Cell> DeleteTimeStamp(std::string const& column_qulifier,
+  absl::optional<Cell> DeleteTimeStamp(std::string const& column_qualifier,
                                        std::chrono::milliseconds timestamp);
 
   bool HasColumns() { return !columns_.empty(); }
@@ -324,7 +324,7 @@ class ColumnFamily {
    *     otherwise absl::nullopt.
    */
   absl::optional<Cell> DeleteTimeStamp(std::string const& row_key,
-                                       std::string const& column_qulifier,
+                                       std::string const& column_qualifier,
                                        std::chrono::milliseconds timestamp);
 
   const_iterator begin() const { return rows_.begin(); }
