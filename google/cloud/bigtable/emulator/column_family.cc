@@ -24,7 +24,7 @@ namespace cloud {
 namespace bigtable {
 namespace emulator {
 
-// FIXME: Workarond our current incorrect ordering of
+// FIXME: Workaround our current incorrect ordering of
 // timestamps. Remove when that is fixed and they are in decreasing
 // order, at which point we can just pick the first element.
 std::map<std::chrono::milliseconds, std::string>::iterator latest(
@@ -49,7 +49,7 @@ StatusOr<ReadModifyWriteCellResult> ColumnRow::ReadModifyWrite(
                                      absl::nullopt};
   }
 
-  // FIXME: Workarond our current incorrect ordering of
+  // FIXME: Workaround our current incorrect ordering of
   // timestamps. Remove when that is fixed and they are in decreasing
   // order, at which point we can just pick the first element.
   auto latest_it = latest(cells_);
@@ -98,7 +98,7 @@ ReadModifyWriteCellResult ColumnRow::ReadModifyWrite(
                                      absl::nullopt};
   }
 
-  // FIXME: Workarond our current incorrect ordering of
+  // FIXME: Workaround our current incorrect ordering of
   // timestamps. Remove when that is fixed and they are in decreasing
   // order, at which point we can just pick the first element.
   auto latest_it = latest(cells_);
