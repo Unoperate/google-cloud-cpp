@@ -691,13 +691,16 @@ Status RowTransaction::AddToCell(
   auto column_qualifier = add_to_cell.column_qualifier().raw_value();
 
   auto maybe_old_value = cf.UpdateCell(row_key, column_qualifier, ts_ms, value);
-
   if (!maybe_old_value) {
+    return maybe_old_value.status();
+  }
+
+  if (!maybe_old_value.value()) {
     DeleteValue delete_value{cf, std::move(column_qualifier), ts_ms};
     undo_.emplace(std::move(delete_value));
   } else {
     RestoreValue restore_value{cf, std::move(column_qualifier), ts_ms,
-                               std::move(maybe_old_value.value())};
+                               std::move(maybe_old_value.value().value())};
     undo_.emplace(std::move(restore_value));
   }
 

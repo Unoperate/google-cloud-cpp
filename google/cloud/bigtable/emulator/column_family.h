@@ -22,6 +22,7 @@
 #include "google/cloud/bigtable/emulator/range_set.h"
 #include "google/cloud/internal/big_endian.h"
 #include "google/cloud/internal/make_status.h"
+#include "google/cloud/status_or.h"
 #include "absl/types/optional.h"
 #include <google/bigtable/admin/v2/table.pb.h>
 #include <google/bigtable/v2/data.pb.h>
@@ -69,9 +70,9 @@ class ColumnRow {
   absl::optional<std::string> SetCell(std::chrono::milliseconds timestamp,
                                       std::string const& value);
 
-  absl::optional<std::string> UpdateCell(
+  StatusOr<absl::optional<std::string>> UpdateCell(
       std::chrono::milliseconds timestamp, std::string const& value,
-      std::function<std::string(std::string const&, std::string const&)> const&
+      std::function<StatusOr<std::string>(std::string const&, std::string const&)> const&
           update_fn);
 
   /**
@@ -147,10 +148,10 @@ class ColumnFamilyRow {
                                       std::chrono::milliseconds timestamp,
                                       std::string const& value);
 
-  absl::optional<std::string> UpdateCell(
+  StatusOr<absl::optional<std::string>> UpdateCell(
       std::string const& column_qualifier, std::chrono::milliseconds timestamp,
       std::string const& value,
-      std::function<std::string(std::string const&, std::string const&)> const&
+      std::function<StatusOr<std::string>(std::string const&, std::string const&)> const&
           update_fn);
 
   /**
@@ -260,7 +261,7 @@ class ColumnFamily {
    * function that just returns the new value.
    *
    */
-  absl::optional<std::string> UpdateCell(std::string const& row_key,
+  StatusOr<absl::optional<std::string>> UpdateCell(std::string const& row_key,
                                          std::string const& column_qualifier,
                                          std::chrono::milliseconds timestamp,
                                          std::string const& value);
@@ -352,40 +353,40 @@ class ColumnFamily {
   // Support for aggregate and other complex types.
   absl::optional<google::bigtable::admin::v2::Type> value_type_ = absl::nullopt;
 
-  static std::string DefaultUpdateCell(std::string const& /*existing_value*/,
+  static StatusOr<std::string> DefaultUpdateCell(std::string const& /*existing_value*/,
                                        std::string const& new_value) {
     return new_value;
   };
 
-  static std::string SumUpdateCellBEInt64(std::string const& existing_value,
+  static StatusOr<std::string> SumUpdateCellBEInt64(std::string const& existing_value,
                                           std::string const& new_value) {
     auto existing_value_int =
         google::cloud::internal::DecodeBigEndian<std::int64_t>(existing_value);
     if (!existing_value_int) {
-      std::abort();
+      return existing_value_int.status();
     }
 
     auto new_value_int =
         google::cloud::internal::DecodeBigEndian<std::int64_t>(new_value);
     if (!new_value_int) {
-      std::abort();
+      return new_value_int.status();
     }
 
     return google::cloud::internal::EncodeBigEndian(existing_value_int.value() +
                                                     new_value_int.value());
   };
 
-  static std::string MaxUpdateCellBEInt64(std::string const& existing_value,
+  static StatusOr<std::string> MaxUpdateCellBEInt64(std::string const& existing_value,
                                           std::string const& new_value) {
     auto existing_int =
         google::cloud::internal::DecodeBigEndian<std::int64_t>(existing_value);
     if (!existing_int) {
-      std::abort();
+      return existing_int.status();
     }
     auto new_int =
         google::cloud::internal::DecodeBigEndian<std::int64_t>(new_value);
     if (!new_int) {
-      std::abort();
+      return new_int.status();
     }
 
     if (existing_int.value() > new_int.value()) {
@@ -395,17 +396,17 @@ class ColumnFamily {
     return google::cloud::internal::EncodeBigEndian(new_int.value());
   };
 
-  static std::string MinUpdateCellBEInt64(std::string const& existing_value,
+  static StatusOr<std::string> MinUpdateCellBEInt64(std::string const& existing_value,
                                           std::string const& new_value) {
     auto existing_int =
         google::cloud::internal::DecodeBigEndian<std::int64_t>(existing_value);
     if (!existing_int) {
-      std::abort();
+      return existing_int.status();
     }
     auto new_int =
         google::cloud::internal::DecodeBigEndian<std::int64_t>(new_value);
     if (!new_int) {
-      std::abort();
+      return new_int.status();
     }
 
     if (existing_int.value() < new_int.value()) {
@@ -415,7 +416,7 @@ class ColumnFamily {
     return google::cloud::internal::EncodeBigEndian(new_int.value());
   };
 
-  std::function<std::string(std::string const&, std::string const&)>
+  std::function<StatusOr<std::string>(std::string const&, std::string const&)>
       update_cell_ = DefaultUpdateCell;
 };
 
