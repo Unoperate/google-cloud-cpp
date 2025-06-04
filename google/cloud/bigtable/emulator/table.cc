@@ -700,6 +700,7 @@ Status RowTransaction::SetCell(
   return Status();
 }
 
+// NOLINTBEGIN(readability-function-cognitive-complexity)
 StatusOr<::google::bigtable::v2::ReadModifyWriteRowResponse>
 RowTransaction::ReadModifyWriteRow(
     google::bigtable::v2::ReadModifyWriteRowRequest const& request) {
@@ -709,7 +710,11 @@ RowTransaction::ReadModifyWriteRow(
         GCP_ERROR_INFO().WithMetadata("request", request.DebugString()));
   }
 
-  google::bigtable::v2::Row row;
+  // tmp_families is a small one row mini table used to accumulate
+  // changed cells efficiently for later return in the row returned by
+  // the RPC.
+  std::map<std::string, ColumnFamily> tmp_families;
+
   for (auto const& rule : request.rules()) {
     auto maybe_column_family = table_->FindColumnFamily(rule);
     if (!maybe_column_family) {
@@ -726,16 +731,76 @@ RowTransaction::ReadModifyWriteRow(
                                    result.timestamp,
                                    std::move(result.maybe_old_value.value())};
         undo_.emplace(std::move(restore_value));
+      } else {
+        // We created a new cell -- we would need to delete it in any rollback
+        DeleteValue delete_value{column_family, rule.column_qualifier(),
+                                 result.timestamp};
+        undo_.emplace(std::move(delete_value));
       }
 
+      // Record the cell in our local mini table here to use in
+      // assembling a row of chan ged cell for return.
+      tmp_families[rule.family_name()].SetCell(
+          row_key_, rule.column_qualifier(), result.timestamp, result.value);
+
     } else if (rule.has_increment_amount()) {
+      auto maybe_result = column_family.ReadModifyWrite(
+          row_key_, rule.column_qualifier(), rule.increment_amount());
+      if (!maybe_result) {
+        return maybe_result.status();
+      }
+
+      auto& result = maybe_result.value();
+
+      if (result.maybe_old_value.has_value()) {
+        // We overwrote a cell, we need to record a RestoreValue in the undo log
+        RestoreValue restore_value{column_family, rule.column_qualifier(),
+                                   result.timestamp,
+                                   std::move(result.maybe_old_value.value())};
+        undo_.emplace(std::move(restore_value));
+      } else {
+        // We created a new cell -- we would need to delete it in any rollback
+        DeleteValue delete_value{column_family, rule.column_qualifier(),
+                                 result.timestamp};
+        undo_.emplace(std::move(delete_value));
+      }
+
+      // Record the cell in our local mini table here to use in
+      // assembling a row of chan ged cell for return.
+      tmp_families[rule.family_name()].SetCell(
+          row_key_, rule.column_qualifier(), result.timestamp, result.value);
     } else {
       return InvalidArgumentError(
           "either append value or increament amount must be set",
           GCP_ERROR_INFO().WithMetadata("rule", rule.DebugString()));
     }
   }
+
+  // Now assemble the return
+  google::bigtable::v2::ReadModifyWriteRowResponse resp;
+  auto* row = resp.mutable_row();
+
+  for (auto& fam : tmp_families) {
+    auto* family = row->add_families();
+    family->set_name(fam.first);
+    for (auto& row : fam.second) {
+      for (auto const& cfr : row.second) {
+        auto* col = family->add_columns();
+        col->set_qualifier(cfr.first);
+        for (auto const& cr : cfr.second) {
+          auto* cell = col->add_cells();
+          cell->set_timestamp_micros(
+              std::chrono::duration_cast<std::chrono::microseconds>(cr.first)
+                  .count());
+          cell->set_value(cr.second);
+        }
+      }
+    }
+  }
+
+  return resp;
 }
+// NOLINTEND(readability-function-cognitive-complexity)
 
 void RowTransaction::Undo() {
   auto row_key = row_key_;
