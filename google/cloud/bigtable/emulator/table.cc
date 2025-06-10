@@ -726,7 +726,7 @@ void ProcessReadModifyWriteResult(
   // Record the cell in our local mini table here to use in
   // assembling a row of changed cells for return.
   tmp_families[rule.family_name()].SetCell(row_key, rule.column_qualifier(),
-                                           result.timestamp, result.value);
+                                           result.timestamp, std::move(result.value));
 }
 
 // NOLINTBEGIN(readability-function-cognitive-complexity)
@@ -777,7 +777,7 @@ RowTransaction::ReadModifyWriteRow(
     }
   }
 
-  // Now assemble the return
+  // Now assemble the returned value.
   google::bigtable::v2::ReadModifyWriteRowResponse resp;
   auto* row = resp.mutable_row();
 
@@ -793,7 +793,7 @@ RowTransaction::ReadModifyWriteRow(
           cell->set_timestamp_micros(
               std::chrono::duration_cast<std::chrono::microseconds>(cr.first)
                   .count());
-          cell->set_value(cr.second);
+          cell->set_value(std::move(cr.second));
         }
       }
     }
