@@ -29,6 +29,8 @@ namespace emulator {
 // order, at which point we can just pick the first element.
 std::map<std::chrono::milliseconds, std::string>::iterator latest(
     std::map<std::chrono::milliseconds, std::string>& cells_not_empty) {
+  assert(!cells_not_empty.empty());
+
   auto first_it = cells_not_empty.begin();
   auto last_it = std::prev(cells_not_empty.end());
   auto latest_it = first_it->first >= last_it->first ? first_it : last_it;
@@ -54,17 +56,18 @@ StatusOr<ReadModifyWriteCellResult> ColumnRow::ReadModifyWrite(
   // order, at which point we can just pick the first element.
   auto latest_it = latest(cells_);
 
+  auto maybe_old_value =
+      google::cloud::internal::DecodeBigEndian<std::int64_t>(
+          latest_it->second);
+  if (!maybe_old_value) {
+    return maybe_old_value.status();
+  }
+
+  auto value = google::cloud::internal::EncodeBigEndian(
+      inc_value + maybe_old_value.value());
+
   if (latest_it->first < system_ms) {
     // We need to add a cell with the current system timestamp
-    auto maybe_old_value =
-        google::cloud::internal::DecodeBigEndian<std::int64_t>(
-            latest_it->second);
-    if (!maybe_old_value) {
-      return maybe_old_value.status();
-    }
-
-    auto value = google::cloud::internal::EncodeBigEndian(
-        inc_value + maybe_old_value.value());
     cells_[system_ms] = value;
 
     return ReadModifyWriteCellResult{system_ms, std::move(value),
@@ -72,18 +75,10 @@ StatusOr<ReadModifyWriteCellResult> ColumnRow::ReadModifyWrite(
   }
 
   // Latest timestamp is >= system time. Overwrite latest timestamp
-  auto maybe_old_value =
-      google::cloud::internal::DecodeBigEndian<std::int64_t>(latest_it->second);
-  if (!maybe_old_value) {
-    return maybe_old_value.status();
-  }
-
-  auto value = google::cloud::internal::EncodeBigEndian(
-      inc_value + maybe_old_value.value());
   auto old_value = std::move(latest_it->second);
   latest_it->second = value;
 
-  return ReadModifyWriteCellResult{latest_it->first, value,
+  return ReadModifyWriteCellResult{latest_it->first, std::move(value),
                                    std::move(old_value)};
 }
 

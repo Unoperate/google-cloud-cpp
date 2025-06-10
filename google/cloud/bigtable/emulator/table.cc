@@ -700,6 +700,35 @@ Status RowTransaction::SetCell(
   return Status();
 }
 
+// ProcessReadModifyWriteRuleResult records the result of a
+// ReadModifyWriteRule computation for possible undo in the undo log
+// and also updates the tmp_families temporary table (containing only
+// one row) with the modified cell for later return.
+void ProcessReadModifyWriteResult(
+    ColumnFamily& column_family, std::string const& row_key,
+    std::stack<absl::variant<DeleteValue, RestoreValue>>& undo,
+    google::bigtable::v2::ReadModifyWriteRule const& rule,
+    ReadModifyWriteCellResult& result,
+    std::map<std::string, ColumnFamily>& tmp_families) {
+  if (result.maybe_old_value.has_value()) {
+    // We overwrote a cell, we need to record a RestoreValue in the undo log
+    RestoreValue restore_value{column_family, rule.column_qualifier(),
+                               result.timestamp,
+                               std::move(result.maybe_old_value.value())};
+    undo.emplace(std::move(restore_value));
+  } else {
+    // We created a new cell -- we would need to delete it in any rollback
+    DeleteValue delete_value{column_family, rule.column_qualifier(),
+                             result.timestamp};
+    undo.emplace(std::move(delete_value));
+  }
+
+  // Record the cell in our local mini table here to use in
+  // assembling a row of changed cells for return.
+  tmp_families[rule.family_name()].SetCell(row_key, rule.column_qualifier(),
+                                           result.timestamp, result.value);
+}
+
 // NOLINTBEGIN(readability-function-cognitive-complexity)
 StatusOr<::google::bigtable::v2::ReadModifyWriteRowResponse>
 RowTransaction::ReadModifyWriteRow(
@@ -725,23 +754,9 @@ RowTransaction::ReadModifyWriteRow(
     if (rule.has_append_value()) {
       auto result = column_family.ReadModifyWrite(
           row_key_, rule.column_qualifier(), rule.append_value());
-      if (result.maybe_old_value.has_value()) {
-        // We overwrote a cell, we need to record a RestoreValue in the undo log
-        RestoreValue restore_value{column_family, rule.column_qualifier(),
-                                   result.timestamp,
-                                   std::move(result.maybe_old_value.value())};
-        undo_.emplace(std::move(restore_value));
-      } else {
-        // We created a new cell -- we would need to delete it in any rollback
-        DeleteValue delete_value{column_family, rule.column_qualifier(),
-                                 result.timestamp};
-        undo_.emplace(std::move(delete_value));
-      }
 
-      // Record the cell in our local mini table here to use in
-      // assembling a row of chan ged cell for return.
-      tmp_families[rule.family_name()].SetCell(
-          row_key_, rule.column_qualifier(), result.timestamp, result.value);
+      ProcessReadModifyWriteResult(column_family, row_key_, undo_, rule, result,
+                                   tmp_families);
 
     } else if (rule.has_increment_amount()) {
       auto maybe_result = column_family.ReadModifyWrite(
@@ -752,23 +767,9 @@ RowTransaction::ReadModifyWriteRow(
 
       auto& result = maybe_result.value();
 
-      if (result.maybe_old_value.has_value()) {
-        // We overwrote a cell, we need to record a RestoreValue in the undo log
-        RestoreValue restore_value{column_family, rule.column_qualifier(),
-                                   result.timestamp,
-                                   std::move(result.maybe_old_value.value())};
-        undo_.emplace(std::move(restore_value));
-      } else {
-        // We created a new cell -- we would need to delete it in any rollback
-        DeleteValue delete_value{column_family, rule.column_qualifier(),
-                                 result.timestamp};
-        undo_.emplace(std::move(delete_value));
-      }
+      ProcessReadModifyWriteResult(column_family, row_key_, undo_, rule, result,
+                                   tmp_families);
 
-      // Record the cell in our local mini table here to use in
-      // assembling a row of chan ged cell for return.
-      tmp_families[rule.family_name()].SetCell(
-          row_key_, rule.column_qualifier(), result.timestamp, result.value);
     } else {
       return InvalidArgumentError(
           "either append value or increment amount must be set",
