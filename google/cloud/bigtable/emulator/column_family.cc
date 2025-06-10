@@ -45,17 +45,17 @@ absl::optional<std::string> ColumnRow::SetCell(
 StatusOr<absl::optional<std::string>> ColumnRow::UpdateCell(
     std::chrono::milliseconds timestamp, std::string const& value,
     std::function<StatusOr<std::string>(std::string const&,
-                                        std::string const&)> const& update_fn) {
+                                        std::string const&&)> const& update_fn) {
   absl::optional<std::string> ret = absl::nullopt;
 
   auto cell_it = cells_.find(timestamp);
   if (!(cell_it == cells_.end())) {
-    auto maybe_update_value = update_fn(cell_it->second, value);
+    auto maybe_update_value = update_fn(cell_it->second, std::move(value));
     if (!maybe_update_value) {
       return maybe_update_value.status();
     }
     ret = std::move(cell_it->second);
-    cells_[timestamp] = std::move(maybe_update_value.value());
+    maybe_update_value.value().swap(cell_it->second);
     return ret;
   }
 
@@ -106,7 +106,7 @@ StatusOr<absl::optional<std::string>> ColumnFamilyRow::UpdateCell(
     std::string const& column_qualifier, std::chrono::milliseconds timestamp,
     std::string const& value,
     std::function<StatusOr<std::string>(std::string const&,
-                                        std::string const&)> const& update_fn) {
+                                        std::string const&&)> const& update_fn) {
   return columns_[column_qualifier].UpdateCell(timestamp, value,
                                                std::move(update_fn));
 }

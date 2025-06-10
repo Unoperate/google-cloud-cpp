@@ -72,7 +72,7 @@ class ColumnRow {
 
   StatusOr<absl::optional<std::string>> UpdateCell(
       std::chrono::milliseconds timestamp, std::string const& value,
-      std::function<StatusOr<std::string>(std::string const&, std::string const&)> const&
+      std::function<StatusOr<std::string>(std::string const&, std::string const&&)> const&
           update_fn);
 
   /**
@@ -151,7 +151,7 @@ class ColumnFamilyRow {
   StatusOr<absl::optional<std::string>> UpdateCell(
       std::string const& column_qualifier, std::chrono::milliseconds timestamp,
       std::string const& value,
-      std::function<StatusOr<std::string>(std::string const&, std::string const&)> const&
+      std::function<StatusOr<std::string>(std::string const&, std::string const&&)> const&
           update_fn);
 
   /**
@@ -354,12 +354,12 @@ class ColumnFamily {
   absl::optional<google::bigtable::admin::v2::Type> value_type_ = absl::nullopt;
 
   static StatusOr<std::string> DefaultUpdateCell(std::string const& /*existing_value*/,
-                                       std::string const& new_value) {
+                                       std::string const&& new_value) {
     return new_value;
   };
 
   static StatusOr<std::string> SumUpdateCellBEInt64(std::string const& existing_value,
-                                          std::string const& new_value) {
+                                          std::string const&& new_value) {
     auto existing_value_int =
         google::cloud::internal::DecodeBigEndian<std::int64_t>(existing_value);
     if (!existing_value_int) {
@@ -377,14 +377,14 @@ class ColumnFamily {
   };
 
   static StatusOr<std::string> MaxUpdateCellBEInt64(std::string const& existing_value,
-                                          std::string const& new_value) {
+                                          std::string const&& new_value) {
     auto existing_int =
         google::cloud::internal::DecodeBigEndian<std::int64_t>(existing_value);
     if (!existing_int) {
       return existing_int.status();
     }
     auto new_int =
-        google::cloud::internal::DecodeBigEndian<std::int64_t>(new_value);
+        google::cloud::internal::DecodeBigEndian<std::int64_t>(std::move(new_value));
     if (!new_int) {
       return new_int.status();
     }
@@ -397,14 +397,14 @@ class ColumnFamily {
   };
 
   static StatusOr<std::string> MinUpdateCellBEInt64(std::string const& existing_value,
-                                          std::string const& new_value) {
+                                          std::string const&& new_value) {
     auto existing_int =
         google::cloud::internal::DecodeBigEndian<std::int64_t>(existing_value);
     if (!existing_int) {
       return existing_int.status();
     }
     auto new_int =
-        google::cloud::internal::DecodeBigEndian<std::int64_t>(new_value);
+        google::cloud::internal::DecodeBigEndian<std::int64_t>(std::move(new_value));
     if (!new_int) {
       return new_int.status();
     }
@@ -416,7 +416,7 @@ class ColumnFamily {
     return google::cloud::internal::EncodeBigEndian(new_int.value());
   };
 
-  std::function<StatusOr<std::string>(std::string const&, std::string const&)>
+  std::function<StatusOr<std::string>(std::string const&, std::string const&&)>
       update_cell_ = DefaultUpdateCell;
 };
 

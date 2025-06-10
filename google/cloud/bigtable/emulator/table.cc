@@ -193,7 +193,7 @@ StatusOr<btadmin::Table> Table::ModifyColumnFamilies(
         if (!maybe_cf) {
           return maybe_cf.status();
         }
-        cf = maybe_cf.value();
+        cf = std::move(maybe_cf.value());
       } else {
         cf = std::make_shared<ColumnFamily>();
       }
