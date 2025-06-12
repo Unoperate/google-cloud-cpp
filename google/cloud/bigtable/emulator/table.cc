@@ -232,6 +232,7 @@ Status Table::MutateRow(google::bigtable::v2::MutateRowRequest const& request) {
                                          request.mutations());
 }
 
+// NOLINTBEGIN(readability-function-cognitive-complexity)
 Status Table::DoMutationsWithPossibleRollback(
     std::string const& row_key,
     google::protobuf::RepeatedPtrField<google::bigtable::v2::Mutation> const&
@@ -300,6 +301,7 @@ Status Table::DoMutationsWithPossibleRollback(
 
   return Status();
 }
+// NOLINTEND(readability-function-cognitive-complexity)
 
 StatusOr<CellStream> Table::CreateCellStream(
     std::shared_ptr<StringRangeSet> range_set,
