@@ -556,7 +556,6 @@ Table::ReadModifyWriteRow(
   return std::move(maybe_response.value());
 }
 
-
 // NOLINTBEGIN(readability-convert-member-functions-to-static)
 Status RowTransaction::AddToCell(
     ::google::bigtable::v2::Mutation_AddToCell const& add_to_cell) {
@@ -726,7 +725,8 @@ void ProcessReadModifyWriteResult(
   // Record the cell in our local mini table here to use in
   // assembling a row of changed cells for return.
   tmp_families[rule.family_name()].SetCell(row_key, rule.column_qualifier(),
-                                           result.timestamp, std::move(result.value));
+                                           result.timestamp,
+                                           std::move(result.value));
 }
 
 // NOLINTBEGIN(readability-function-cognitive-complexity)
