@@ -923,7 +923,7 @@ TEST(ReadModifyWrite, Unsetcase) {
   ASSERT_STATUS_OK(maybe_table);
   auto& table = maybe_table.value();
 
-  auto constexpr rmw_text = R"pb(
+  auto constexpr kRMWText = R"pb(
     table_name: "projects/test/instances/test/tables/test"
     row_key: "0"
     rules:
@@ -940,7 +940,7 @@ TEST(ReadModifyWrite, Unsetcase) {
   )pb";
 
   google::bigtable::v2::ReadModifyWriteRowRequest request;
-  ASSERT_TRUE(TextFormat::ParseFromString(rmw_text, &request));
+  ASSERT_TRUE(TextFormat::ParseFromString(kRMWText, &request));
 
   auto system_time_ms_before =
       std::chrono::duration_cast<std::chrono::milliseconds>(

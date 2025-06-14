@@ -740,10 +740,10 @@ FamiliesToReadModifyWriteResponse(
   auto* row = resp.mutable_row();
   row->set_key(row_key);
 
-  for (auto& fam : families) {
+  for (const auto& fam : families) {
     auto* family = row->add_families();
     family->set_name(fam.first);
-    for (auto& row : fam.second) {
+    for (const auto& row : fam.second) {
       for (auto const& cfr : row.second) {
         auto* col = family->add_columns();
         col->set_qualifier(cfr.first);
