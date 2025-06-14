@@ -39,8 +39,8 @@ namespace google {
 namespace cloud {
 namespace bigtable {
 namespace emulator {
-using std::string;
 using ::google::protobuf::TextFormat;
+using std::string;
 
 struct SetCellParams {
   std::string column_family_name;
