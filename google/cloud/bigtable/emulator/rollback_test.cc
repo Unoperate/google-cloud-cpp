@@ -15,6 +15,7 @@
 #include "google/cloud/bigtable/emulator/column_family.h"
 #include "google/cloud/bigtable/emulator/row_streamer.h"
 #include "google/cloud/bigtable/emulator/table.h"
+#include "google/cloud/internal/big_endian.h"
 #include "google/cloud/internal/make_status.h"
 #include "google/cloud/status.h"
 #include "google/cloud/status_or.h"
@@ -26,6 +27,7 @@
 #include <google/bigtable/v2/bigtable.grpc.pb.h>
 #include <google/bigtable/v2/bigtable.pb.h>
 #include <google/bigtable/v2/data.pb.h>
+#include <google/protobuf/text_format.h>
 #include <absl/strings/str_format.h>
 #include <gtest/gtest.h>
 #include <chrono>
@@ -38,6 +40,7 @@ namespace cloud {
 namespace bigtable {
 namespace emulator {
 using std::string;
+using ::google::protobuf::TextFormat;
 
 struct SetCellParams {
   std::string column_family_name;
@@ -866,6 +869,127 @@ TEST(TransactionRollback, DeleteFromRowBasicFunction) {
   ASSERT_EQ(false, HasColumn(table, second_column_family_name, row_key,
                              column_qualifier)
                        .ok());
+}
+
+StatusOr<google::bigtable::v2::Column> GetColumn(
+    google::bigtable::v2::ReadModifyWriteRowResponse const& resp,
+    std::string const& row_key, int family_index, std::string const& qual) {
+  if (!resp.has_row()) {
+    return NotFoundError(
+        "response has no row",
+        GCP_ERROR_INFO().WithMetadata("response message", resp.DebugString()));
+  }
+
+  if (resp.row().key() != row_key) {
+    return InvalidArgumentError(
+        "row key does not match",
+        GCP_ERROR_INFO().WithMetadata(row_key, resp.row().key()));
+  }
+
+  if (family_index < 0) {
+    return InvalidArgumentError(
+        "supplied family index < 0",
+        GCP_ERROR_INFO().WithMetadata("family_index",
+                                      absl::StrFormat("%d", family_index)));
+  }
+
+  if (family_index > resp.row().families_size() - 1) {
+    return internal::InvalidArgumentError(
+        "supplied family index is out of range",
+        GCP_ERROR_INFO().WithMetadata("family index",
+                                      absl::StrFormat("%d", family_index)));
+  }
+
+  for (auto const& col : resp.row().families(family_index).columns()) {
+    if (col.qualifier() == qual) {
+      return col;
+    }
+  }
+
+  return NotFoundError("column not found",
+                       GCP_ERROR_INFO().WithMetadata("qualifier", qual));
+}
+
+// Test that ReadModifyWrite does the correct thing when the row
+// and/or the column is unset (it should introduce new cells with the
+// timestamp of current system time and assume the missing values are
+// 0 or an empty string).
+TEST(ReadModifyWrite, Unsetcase) {
+  auto const* const table_name = "projects/test/instances/test/tables/test";
+
+  std::vector<std::string> column_families = {"column_family"};
+  auto maybe_table = CreateTable(table_name, column_families);
+
+  ASSERT_STATUS_OK(maybe_table);
+  auto& table = maybe_table.value();
+
+  auto constexpr rmw_text = R"pb(
+    table_name: "projects/test/instances/test/tables/test"
+    row_key: "0"
+    rules:
+    [ {
+      family_name: "column_family"
+      column_qualifier: "column_1"
+      increment_amount: 1
+    }
+      , {
+        family_name: "column_family"
+        column_qualifier: "column_2"
+        append_value: "a string"
+      }]
+  )pb";
+
+  google::bigtable::v2::ReadModifyWriteRowRequest request;
+  ASSERT_TRUE(TextFormat::ParseFromString(rmw_text, &request));
+
+  auto system_time_ms_before =
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::system_clock::now().time_since_epoch());
+
+  auto maybe_response = table->ReadModifyWriteRow(request);
+  ASSERT_STATUS_OK(maybe_response);
+
+  auto& response = maybe_response.value();
+  ASSERT_EQ(response.row().key(), "0");
+  ASSERT_EQ(response.row().families_size(), 1);
+  ASSERT_EQ(response.row().families(0).name(), "column_family");
+  ASSERT_EQ(response.row().families(0).columns_size(), 2);
+
+  auto maybe_column = GetColumn(response, "0", 0, "column_1");
+  ASSERT_STATUS_OK(maybe_column);
+  auto& col = maybe_column.value();
+  ASSERT_EQ(col.cells_size(), 1);
+  ASSERT_GE(std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::microseconds(col.cells(0).timestamp_micros())),
+            system_time_ms_before);
+  ASSERT_EQ(col.cells(0).value(),
+            internal::EncodeBigEndian(static_cast<std::int64_t>(1)));
+
+  maybe_column = GetColumn(response, "0", 0, "column_2");
+  ASSERT_STATUS_OK(maybe_column);
+  col = maybe_column.value();
+  ASSERT_EQ(col.cells_size(), 1);
+  ASSERT_GE(std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::microseconds(col.cells(0).timestamp_micros())),
+            system_time_ms_before);
+  ASSERT_EQ(col.cells(0).value(), "a string");
+
+  auto maybe_cells = GetColumn(table, "column_family", "0", "column_1");
+  ASSERT_STATUS_OK(maybe_cells);
+  auto& cells = maybe_cells.value();
+  ASSERT_EQ(cells.size(), 1);
+  auto cell_it = cells.begin();
+  ASSERT_GE(cell_it->first, system_time_ms_before);
+  ASSERT_EQ(cell_it->second,
+            internal::EncodeBigEndian(static_cast<std::int64_t>(1)));
+
+  maybe_cells = GetColumn(table, "column_family", "0", "column_2");
+  ASSERT_STATUS_OK(maybe_cells);
+  cells = maybe_cells.value();
+  ASSERT_EQ(cells.size(), 1);
+  cell_it = cells.begin();
+  ASSERT_GE(cell_it->first, system_time_ms_before);
+  ASSERT_EQ(cell_it->second, "a string");
 }
 
 }  // namespace emulator
