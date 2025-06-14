@@ -322,7 +322,7 @@ Status HasRow(std::shared_ptr<google::cloud::bigtable::emulator::Table>& table,
 //
 // Supplied with a timestamp < -1, it should return an error and fail the entire
 // mutation chain.
-TEST(TransactonRollback, ZeroOrNegativeTimestampHandling) {
+TEST(TransactionRollback, ZeroOrNegativeTimestampHandling) {
   ::google::bigtable::admin::v2::Table schema;
   ::google::bigtable::admin::v2::ColumnFamily column_family;
 
@@ -412,7 +412,7 @@ TEST(TransactonRollback, ZeroOrNegativeTimestampHandling) {
 }
 
 // Does the SetCell mutation work to set a cell to a specific value?
-TEST(TransactonRollback, SetCellBasicFunction) {
+TEST(TransactionRollback, SetCellBasicFunction) {
   ::google::bigtable::admin::v2::Table schema;
   ::google::bigtable::admin::v2::ColumnFamily column_family;
 
@@ -445,7 +445,7 @@ TEST(TransactonRollback, SetCellBasicFunction) {
 // Test that an old value is correctly restored in a pre-populated
 // cell, when one of a set of SetCell mutations fails after the cell
 // had been updated with a new value.
-TEST(TransactonRollback, TestRestoreValue) {
+TEST(TransactionRollback, TestRestoreValue) {
   ::google::bigtable::admin::v2::Table schema;
   ::google::bigtable::admin::v2::ColumnFamily column_family;
 
@@ -508,7 +508,7 @@ TEST(TransactonRollback, TestRestoreValue) {
 
 // Test that a new cell introduced in a chain of SetCell mutations is
 // deleted on rollback if a subsequent mutation fails.
-TEST(TransactonRollback, DeleteValue) {
+TEST(TransactionRollback, DeleteValue) {
   ::google::bigtable::admin::v2::Table schema;
   ::google::bigtable::admin::v2::ColumnFamily column_family;
 
@@ -563,7 +563,7 @@ TEST(TransactonRollback, DeleteValue) {
 // column family name that is not in the table schema) then the column
 // and any of the cells introduced is deleted in the rollback, but
 // that any pre-transaction-attemot data in the row is unaffected.
-TEST(TransactonRollback, DeleteColumn) {
+TEST(TransactionRollback, DeleteColumn) {
   ::google::bigtable::admin::v2::Table schema;
   ::google::bigtable::admin::v2::ColumnFamily column_family;
 
@@ -612,7 +612,7 @@ TEST(TransactonRollback, DeleteColumn) {
 // Test that a chain of SetCell mutations that initially introduces a
 // new row, but one of which eventually fails, will end with the whole
 // row rolled back.
-TEST(TransactonRollback, DeleteRow) {
+TEST(TransactionRollback, DeleteRow) {
   ::google::bigtable::admin::v2::Table schema;
   ::google::bigtable::admin::v2::ColumnFamily column_family;
 
@@ -649,7 +649,7 @@ TEST(TransactonRollback, DeleteRow) {
 // Does the DeleteFromfamily mutation work to delete a row from a
 // specific family and does it rows with the same row key in other
 // column families alone?
-TEST(TransactonRollback, DeleteFromFamilyBasicFunction) {
+TEST(TransactionRollback, DeleteFromFamilyBasicFunction) {
   ::google::bigtable::admin::v2::Table schema;
   ::google::bigtable::admin::v2::ColumnFamily column_family;
 
@@ -698,7 +698,7 @@ TEST(TransactonRollback, DeleteFromFamilyBasicFunction) {
 
 // Test that DeleteFromfamily can be rolled back in case a subsequent
 // mutation fails.
-TEST(TransactonRollback, DeleteFromFamilyRollback) {
+TEST(TransactionRollback, DeleteFromFamilyRollback) {
   ::google::bigtable::admin::v2::Table schema;
   ::google::bigtable::admin::v2::ColumnFamily column_family;
 
@@ -765,7 +765,7 @@ TEST(TransactonRollback, DeleteFromFamilyRollback) {
 }
 
 // Does DeleteFromColumn basically work?
-TEST(TransactonRollback, DeleteFromColumnBasicFunction) {
+TEST(TransactionRollback, DeleteFromColumnBasicFunction) {
   ::google::bigtable::admin::v2::Table schema;
   ::google::bigtable::admin::v2::ColumnFamily column_family;
 
@@ -807,7 +807,7 @@ TEST(TransactonRollback, DeleteFromColumnBasicFunction) {
 }
 
 // Does DeleteFromColumn rollback work?
-TEST(TransactonRollback, DeleteFromColumnRollback) {
+TEST(TransactionRollback, DeleteFromColumnRollback) {
   ::google::bigtable::admin::v2::Table schema;
   ::google::bigtable::admin::v2::ColumnFamily column_family;
 
@@ -866,7 +866,7 @@ TEST(TransactonRollback, DeleteFromColumnRollback) {
 }
 
 // Can we delete a row from all column families?
-TEST(TransactonRollback, DeleteFromRowBasicFunction) {
+TEST(TransactionRollback, DeleteFromRowBasicFunction) {
   ::google::bigtable::admin::v2::Table schema;
   ::google::bigtable::admin::v2::ColumnFamily column_family;
 
