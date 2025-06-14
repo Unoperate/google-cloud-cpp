@@ -919,7 +919,7 @@ TEST(TransactionRollback, DeleteFromRowBasicFunction) {
 
 // Does AddToCell reject requests to add to a cell in a column family
 // not provisioned for aggregation?
-TEST(TransactonRollback, AddToCellRejectsRequestsToNonAggregateColumnFamily) {
+TEST(TransactionRollback, AddToCellRejectsRequestsToNonAggregateColumnFamily) {
   ::google::bigtable::admin::v2::Table schema;
   ::google::bigtable::admin::v2::ColumnFamily column_family;
 
@@ -958,7 +958,7 @@ TEST(TransactonRollback, AddToCellRejectsRequestsToNonAggregateColumnFamily) {
 }
 
 // Test basic functionality of AddToCell Sum aggregation.
-TEST(TransactonRollback, AddToCellTestSum) {
+TEST(TransactionRollback, AddToCellTestSum) {
   auto const* const table_name = "projects/test/instances/test/tables/test";
   auto const* const row_key = "0";
   auto const* const column_family_name = "column_family_1";
@@ -1016,7 +1016,7 @@ TEST(TransactonRollback, AddToCellTestSum) {
 }
 
 // Test basic functionality of AddToCell Max aggregation.
-TEST(TransactonRollback, AddToCellTestMax) {
+TEST(TransactionRollback, AddToCellTestMax) {
   auto const* const table_name = "projects/test/instances/test/tables/test";
   auto const* const row_key = "0";
   auto const* const column_family_name = "column_family_1";
@@ -1064,7 +1064,7 @@ TEST(TransactonRollback, AddToCellTestMax) {
 }
 
 // Test basic functionality of AddToCell Min aggregation.
-TEST(TransactonRollback, AddToCellTestMin) {
+TEST(TransactionRollback, AddToCellTestMin) {
   auto const* const table_name = "projects/test/instances/test/tables/test";
   auto const* const row_key = "0";
   auto const* const column_family_name = "column_family_1";
