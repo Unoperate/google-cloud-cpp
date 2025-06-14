@@ -868,7 +868,6 @@ TEST(TransactionRollback, DeleteFromRowBasicFunction) {
                        .ok());
 }
 
-
 }  // namespace emulator
 }  // namespace bigtable
 }  // namespace cloud
