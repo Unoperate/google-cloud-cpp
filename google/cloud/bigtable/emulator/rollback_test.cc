@@ -992,6 +992,27 @@ TEST(ReadModifyWrite, Unsetcase) {
   ASSERT_EQ(cell_it->second, "a string");
 }
 
+// Test that the RPC does the right thing when the latest cell in the
+// column has a newer timestamp than system time.
+TEST(ReadModifyWrite, SetAndNewerTimestampCase) {}
+
+// Test that the RPC does the right thing when the latest cell in the
+// column has an older timestamp than system time.
+TEST(ReadModifyWrite, SetAndOlderTimestampCase) {}
+
+// Test that the RPC does the right thing when the latest cell in the
+// column has a newer timestamp than system time, and we need to roll back.
+TEST(ReadModifyWrite, RollbackNewerTimestamp) {}
+
+// Test that the RPC does the right thing when the latest cell in the
+// column has a older timestamp than system time, and we need to roll back.
+TEST(ReadModifyWrite, RollbackOlderTimestamp) {}
+
+// Test that the RPC does the right thing when the target(s) are unset
+// and we need to rollback.
+TEST(ReadModifyWrite, RollbackNotSetCase) {}
+
+
 }  // namespace emulator
 }  // namespace bigtable
 }  // namespace cloud
