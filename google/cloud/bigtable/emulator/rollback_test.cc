@@ -1099,7 +1099,6 @@ TEST(ReadModifyWrite, RollbackOlderTimestamp) {}
 // and we need to rollback.
 TEST(ReadModifyWrite, RollbackNotSetCase) {}
 
-
 }  // namespace emulator
 }  // namespace bigtable
 }  // namespace cloud
