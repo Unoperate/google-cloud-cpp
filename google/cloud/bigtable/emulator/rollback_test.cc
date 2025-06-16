@@ -1097,10 +1097,10 @@ TEST(ReadModifyWrite, SetAndOlderTimestampCase) {
   auto usecs_in_day = (static_cast<std::int64_t>(24) * 60 * 60 * 1000 * 1000);
 
   auto far_past_us = (std::chrono::duration_cast<std::chrono::milliseconds>(
-                            std::chrono::system_clock::now().time_since_epoch())
-                            .count() *
-                        1000) -
-                       usecs_in_day;
+                          std::chrono::system_clock::now().time_since_epoch())
+                          .count() *
+                      1000) -
+                     usecs_in_day;
   auto far_past_us_oldest = far_past_us - 1000;
 
   std::vector<SetCellParams> p = {
