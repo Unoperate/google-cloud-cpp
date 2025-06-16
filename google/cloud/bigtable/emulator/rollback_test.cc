@@ -993,8 +993,95 @@ TEST(ReadModifyWrite, Unsetcase) {
 }
 
 // Test that the RPC does the right thing when the latest cell in the
-// column has a newer timestamp than system time.
-TEST(ReadModifyWrite, SetAndNewerTimestampCase) {}
+// column has a newer timestamp than system time. In particular, it
+// should update the latest cell with a new value (and not create a
+// new cell). This also tests that the RPC chooses the latest cell to
+// update (and will catch bugs in cell ordering).
+TEST(ReadModifyWrite, SetAndNewerTimestampCase) {
+  auto const* const table_name = "projects/test/instances/test/tables/test";
+
+  std::vector<std::string> column_families = {"column_family"};
+  auto maybe_table = CreateTable(table_name, column_families);
+
+  ASSERT_STATUS_OK(maybe_table);
+  auto& table = maybe_table.value();
+
+  auto usecs_in_day = (static_cast<std::int64_t>(24) * 60 * 60 * 1000 * 1000);
+
+  auto far_future_us = (std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::system_clock::now().time_since_epoch())
+                            .count() *
+                        1000) +
+                       usecs_in_day;
+  auto far_future_us_latest = far_future_us + 1000;
+
+  std::vector<SetCellParams> p = {
+      {"column_family", "column_1", far_future_us, "older"},
+      {"column_family", "column_1", far_future_us_latest, "latest"},
+      {"column_family", "column_2", far_future_us,
+       internal::EncodeBigEndian(static_cast<std::int64_t>(100))},
+      {"column_family", "column_2", far_future_us_latest,
+       internal::EncodeBigEndian(static_cast<std::int64_t>(200))},
+  };
+
+  auto status = SetCells(table, table_name, "0", p);
+  ASSERT_STATUS_OK(status);
+
+  auto constexpr kRMWText = R"pb(
+    table_name: "projects/test/instances/test/tables/test"
+    row_key: "0"
+    rules:
+    [ {
+      family_name: "column_family"
+      column_qualifier: "column_1"
+      append_value: "_with_suffix"
+    }
+      , {
+        family_name: "column_family"
+        column_qualifier: "column_2"
+        increment_amount: 1
+      }]
+  )pb";
+
+  google::bigtable::v2::ReadModifyWriteRowRequest request;
+  ASSERT_TRUE(TextFormat::ParseFromString(kRMWText, &request));
+
+  auto maybe_response = table->ReadModifyWriteRow(request);
+  ASSERT_STATUS_OK(maybe_response);
+
+  auto& response = maybe_response.value();
+  ASSERT_EQ(response.row().key(), "0");
+  ASSERT_EQ(response.row().families_size(), 1);
+  ASSERT_EQ(response.row().families(0).name(), "column_family");
+  ASSERT_EQ(response.row().families(0).columns_size(), 2);
+
+  auto maybe_column = GetColumn(response, "0", 0, "column_1");
+  ASSERT_STATUS_OK(maybe_column);
+  auto& col = maybe_column.value();
+  ASSERT_EQ(col.cells_size(), 1);
+  ASSERT_EQ(col.cells(0).timestamp_micros(), far_future_us_latest);
+  ASSERT_EQ(col.cells(0).value(), "latest_with_suffix");
+
+  maybe_column = GetColumn(response, "0", 0, "column_2");
+  ASSERT_STATUS_OK(maybe_column);
+  col = maybe_column.value();
+  ASSERT_EQ(col.cells_size(), 1);
+  ASSERT_EQ(col.cells(0).timestamp_micros(), far_future_us_latest);
+  ASSERT_EQ(col.cells(0).value(),
+            internal::EncodeBigEndian(static_cast<std::int64_t>(201)));
+
+  ASSERT_STATUS_OK(
+      HasCell(table, "column_family", "0", "column_1", far_future_us, "older"));
+  ASSERT_STATUS_OK(HasCell(table, "column_family", "0", "column_1",
+                           far_future_us_latest, "latest_with_suffix"));
+
+  ASSERT_STATUS_OK(
+      HasCell(table, "column_family", "0", "column_2", far_future_us,
+              internal::EncodeBigEndian(static_cast<std::int64_t>(100))));
+  ASSERT_STATUS_OK(
+      HasCell(table, "column_family", "0", "column_2", far_future_us_latest,
+              internal::EncodeBigEndian(static_cast<std::int64_t>(201))));
+}
 
 // Test that the RPC does the right thing when the latest cell in the
 // column has an older timestamp than system time.
