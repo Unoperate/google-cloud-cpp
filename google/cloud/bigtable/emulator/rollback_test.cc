@@ -1240,11 +1240,58 @@ TEST(ReadModifyWrite, RollbackNewerTimestamp) {
 
 // Test that the RPC does the right thing when the latest cell in the
 // column has a older timestamp than system time, and we need to roll back.
-TEST(ReadModifyWrite, RollbackOlderTimestamp) {}
+TEST(ReadModifyWrite, RollbackOlderTimestamp) {
+  auto const* const table_name = "projects/test/instances/test/tables/test";
 
-// Test that the RPC does the right thing when the target(s) are unset
-// and we need to rollback.
-TEST(ReadModifyWrite, RollbackNotSetCase) {}
+  std::vector<std::string> column_families = {"column_family"};
+  auto maybe_table = CreateTable(table_name, column_families);
+
+  ASSERT_STATUS_OK(maybe_table);
+  auto& table = maybe_table.value();
+
+  auto usecs_in_day = (static_cast<std::int64_t>(24) * 60 * 60 * 1000 * 1000);
+
+  auto far_past_us = (std::chrono::duration_cast<std::chrono::milliseconds>(
+                          std::chrono::system_clock::now().time_since_epoch())
+                          .count() *
+                      1000) -
+                     usecs_in_day;
+
+  std::vector<SetCellParams> p = {
+      {"column_family", "column_1", far_past_us, "old"},
+  };
+
+  auto status = SetCells(table, table_name, "0", p);
+  ASSERT_STATUS_OK(status);
+
+  // The rules are evaluated in order. In this case, the 2nd rule
+  // refers to a column family that does not exist and should trigger
+  // a rollback.
+  auto constexpr kRMWText = R"pb(
+    table_name: "projects/test/instances/test/tables/test"
+    row_key: "0"
+    rules:
+    [ {
+      family_name: "column_family"
+      column_qualifier: "column_1"
+      append_value: "_with_suffix"
+    }
+      , {
+        family_name: "does_not_exist"
+        column_qualifier: "column_2"
+        increment_amount: 1
+      }]
+  )pb";
+
+  google::bigtable::v2::ReadModifyWriteRowRequest request;
+  ASSERT_TRUE(TextFormat::ParseFromString(kRMWText, &request));
+
+  auto maybe_response = table->ReadModifyWriteRow(request);
+  ASSERT_EQ(false, maybe_response.ok());
+
+  ASSERT_STATUS_OK(
+      HasCell(table, "column_family", "0", "column_1", far_past_us, "old"));
+}
 
 }  // namespace emulator
 }  // namespace bigtable
