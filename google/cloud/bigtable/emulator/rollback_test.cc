@@ -1111,7 +1111,9 @@ TEST(ReadModifyWrite, SetAndNewerTimestampCase) {
 }
 
 // Test that the RPC does the right thing when the latest cell in the
-// column has an older timestamp than system time.
+// column has an older timestamp than system time. In particular, a
+// new cell with the current system time should be added to the cell
+// to contain the value after adding or appending.
 TEST(ReadModifyWrite, SetAndOlderTimestampCase) {
   auto const* const table_name = "projects/test/instances/test/tables/test";
 
@@ -1211,7 +1213,9 @@ TEST(ReadModifyWrite, SetAndOlderTimestampCase) {
 }
 
 // Test that the RPC does the right thing when the latest cell in the
-// column has a newer timestamp than system time, and we need to roll back.
+// column has a newer timestamp than system time, and we need to roll
+// back. In particular the changes to the latest cell should be rolled
+// back.
 TEST(ReadModifyWrite, RollbackNewerTimestamp) {
   auto const* const table_name = "projects/test/instances/test/tables/test";
 
@@ -1266,7 +1270,9 @@ TEST(ReadModifyWrite, RollbackNewerTimestamp) {
 }
 
 // Test that the RPC does the right thing when the latest cell in the
-// column has a older timestamp than system time, and we need to roll back.
+// column has a older timestamp than system time, and we need to roll
+// back. In particular, the added cell should be deleted (no
+// additional cell should be available after the failed transaction).
 TEST(ReadModifyWrite, RollbackOlderTimestamp) {
   auto const* const table_name = "projects/test/instances/test/tables/test";
 
