@@ -743,8 +743,8 @@ FamiliesToReadModifyWriteResponse(
   for (auto const& fam : families) {
     auto* family = row->add_families();
     family->set_name(fam.first);
-    for (auto const& row : fam.second) {
-      for (auto const& cfr : row.second) {
+    for (auto const& r : fam.second) {
+      for (auto const& cfr : r.second) {
         auto* col = family->add_columns();
         col->set_qualifier(cfr.first);
         for (auto const& cr : cfr.second) {
@@ -761,7 +761,6 @@ FamiliesToReadModifyWriteResponse(
   return resp;
 }
 
-// NOLINTBEGIN(readability-function-cognitive-complexity)
 StatusOr<::google::bigtable::v2::ReadModifyWriteRowResponse>
 RowTransaction::ReadModifyWriteRow(
     google::bigtable::v2::ReadModifyWriteRowRequest const& request) {
@@ -812,7 +811,6 @@ RowTransaction::ReadModifyWriteRow(
   // Now assemble the returned value.
   return FamiliesToReadModifyWriteResponse(row_key_, tmp_families);
 }
-// NOLINTEND(readability-function-cognitive-complexity)
 
 void RowTransaction::Undo() {
   auto row_key = row_key_;
