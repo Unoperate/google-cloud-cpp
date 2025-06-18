@@ -900,6 +900,33 @@ StatusOr<google::bigtable::v2::Column> GetColumn(
                                       absl::StrFormat("%d", family_index)));
   }
 
+  // Check that column families and column qualifiers in the response
+  // are neither empty nor repeated.
+  std::set<std::string> families;
+  for (int i = 0; i < resp.row().families_size(); i++) {
+    auto ret = families.emplace(resp.row().families(i).name());
+    // The family name should not be empty and should not be
+    // repeated. Neither should the column qualifiers be empty or
+    // repeated.
+    if (ret.first->empty() || !ret.second) {
+      return internal::InvalidArgumentError(
+          "empty or repeated family name",
+          GCP_ERROR_INFO().WithMetadata(
+              "ReadModifyWriteRowReponse", resp.DebugString()));
+    }
+
+    std::set<std::string> column_qualifiers;
+    for (auto const& col: resp.row().families(i).columns()) {
+      auto ret = column_qualifiers.emplace(col.qualifier());
+      if (ret.first->empty() || !ret.second) {
+      return internal::InvalidArgumentError(
+          "empty or repeated column qualifier",
+          GCP_ERROR_INFO().WithMetadata(
+              "ReadModifyWriteRowResponse", resp.DebugString()));
+      }
+    }
+  }
+
   for (auto const& col : resp.row().families(family_index).columns()) {
     if (col.qualifier() == qual) {
       return col;
