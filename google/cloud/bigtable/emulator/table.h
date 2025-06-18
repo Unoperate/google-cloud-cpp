@@ -36,6 +36,7 @@
 #include <memory>
 #include <mutex>
 #include <stack>
+#include <string>
 
 namespace google {
 namespace cloud {
@@ -181,6 +182,11 @@ class RowTransaction {
   // (up to 4KB) value.
   std::string const& row_key_;
 };
+
+google::bigtable::v2::ReadModifyWriteRowResponse
+FamiliesToReadModifyWriteResponse(
+    std::string const& row_key,
+    std::map<std::string, ColumnFamily> const& families);
 
 /**
  * A `AbstractCellStreamImpl` which streams filtered contents of the table.
