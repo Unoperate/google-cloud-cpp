@@ -1231,8 +1231,8 @@ TEST(ReadModifyWrite, Unsetcase) {
   ASSERT_GE(std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::microseconds(col.cells(0).timestamp_micros())),
             system_time_ms_before);
-  ASSERT_EQ(col.cells(0).value(),
-            ::google::cloud::internal::EncodeBigEndian(static_cast<std::int64_t>(1)));
+  ASSERT_EQ(col.cells(0).value(), ::google::cloud::internal::EncodeBigEndian(
+                                      static_cast<std::int64_t>(1)));
 
   auto maybe_column_2 = GetColumn(response, "0", 0, "column_2");
   ASSERT_STATUS_OK(maybe_column_2);
@@ -1249,8 +1249,8 @@ TEST(ReadModifyWrite, Unsetcase) {
   ASSERT_EQ(cells.size(), 1);
   auto cell_it = cells.begin();
   ASSERT_GE(cell_it->first, system_time_ms_before);
-  ASSERT_EQ(cell_it->second,
-            ::google::cloud::internal::EncodeBigEndian(static_cast<std::int64_t>(1)));
+  ASSERT_EQ(cell_it->second, ::google::cloud::internal::EncodeBigEndian(
+                                 static_cast<std::int64_t>(1)));
 
   auto maybe_cells_2 = GetColumn(table, "column_family", "0", "column_2");
   ASSERT_STATUS_OK(maybe_cells_2);
@@ -1293,9 +1293,11 @@ TEST(ReadModifyWrite, SetAndNewerTimestampCase) {
       {"column_family", "column_1", far_future_us, "older"},
       {"column_family", "column_1", far_future_us_latest, "latest"},
       {"column_family", "column_2", far_future_us,
-       ::google::cloud::internal::EncodeBigEndian(static_cast<std::int64_t>(100))},
+       ::google::cloud::internal::EncodeBigEndian(
+           static_cast<std::int64_t>(100))},
       {"column_family", "column_2", far_future_us_latest,
-       ::google::cloud::internal::EncodeBigEndian(static_cast<std::int64_t>(200))},
+       ::google::cloud::internal::EncodeBigEndian(
+           static_cast<std::int64_t>(200))},
   };
 
   auto status = SetCells(table, table_name, "0", p);
@@ -1341,20 +1343,22 @@ TEST(ReadModifyWrite, SetAndNewerTimestampCase) {
   col = maybe_column_2.value();
   ASSERT_EQ(col.cells_size(), 1);
   ASSERT_EQ(col.cells(0).timestamp_micros(), far_future_us_latest);
-  ASSERT_EQ(col.cells(0).value(),
-            ::google::cloud::internal::EncodeBigEndian(static_cast<std::int64_t>(201)));
+  ASSERT_EQ(col.cells(0).value(), ::google::cloud::internal::EncodeBigEndian(
+                                      static_cast<std::int64_t>(201)));
 
   ASSERT_STATUS_OK(
       HasCell(table, "column_family", "0", "column_1", far_future_us, "older"));
   ASSERT_STATUS_OK(HasCell(table, "column_family", "0", "column_1",
                            far_future_us_latest, "latest_with_suffix"));
 
-  ASSERT_STATUS_OK(
-      HasCell(table, "column_family", "0", "column_2", far_future_us,
-              ::google::cloud::internal::EncodeBigEndian(static_cast<std::int64_t>(100))));
-  ASSERT_STATUS_OK(
-      HasCell(table, "column_family", "0", "column_2", far_future_us_latest,
-              ::google::cloud::internal::EncodeBigEndian(static_cast<std::int64_t>(201))));
+  ASSERT_STATUS_OK(HasCell(table, "column_family", "0", "column_2",
+                           far_future_us,
+                           ::google::cloud::internal::EncodeBigEndian(
+                               static_cast<std::int64_t>(100))));
+  ASSERT_STATUS_OK(HasCell(table, "column_family", "0", "column_2",
+                           far_future_us_latest,
+                           ::google::cloud::internal::EncodeBigEndian(
+                               static_cast<std::int64_t>(201))));
 }
 
 // Test that the RPC does the right thing when the latest cell in the
@@ -1387,9 +1391,11 @@ TEST(ReadModifyWrite, SetAndOlderTimestampCase) {
       {"column_family", "column_1", far_past_us, "old"},
       {"column_family", "column_1", far_past_us_oldest, "oldest"},
       {"column_family", "column_2", far_past_us,
-       ::google::cloud::internal::EncodeBigEndian(static_cast<std::int64_t>(100))},
+       ::google::cloud::internal::EncodeBigEndian(
+           static_cast<std::int64_t>(100))},
       {"column_family", "column_2", far_past_us_oldest,
-       ::google::cloud::internal::EncodeBigEndian(static_cast<std::int64_t>(200))},
+       ::google::cloud::internal::EncodeBigEndian(
+           static_cast<std::int64_t>(200))},
   };
 
   auto status = SetCells(table, table_name, "0", p);
@@ -1442,7 +1448,8 @@ TEST(ReadModifyWrite, SetAndOlderTimestampCase) {
   ASSERT_EQ(integer_col.cells_size(), 1);
   ASSERT_GE(integer_col.cells(0).timestamp_micros(), system_time_us_before);
   ASSERT_EQ(integer_col.cells(0).value(),
-            ::google::cloud::internal::EncodeBigEndian(static_cast<std::int64_t>(101)));
+            ::google::cloud::internal::EncodeBigEndian(
+                static_cast<std::int64_t>(101)));
 
   ASSERT_STATUS_OK(
       HasCell(table, "column_family", "0", "column_1", far_past_us, "old"));
@@ -1451,16 +1458,17 @@ TEST(ReadModifyWrite, SetAndOlderTimestampCase) {
   ASSERT_STATUS_OK(HasCell(table, "column_family", "0", "column_1",
                            col.cells(0).timestamp_micros(), "old_with_suffix"));
 
-  ASSERT_STATUS_OK(
-      HasCell(table, "column_family", "0", "column_2", far_past_us,
-              ::google::cloud::internal::EncodeBigEndian(static_cast<std::int64_t>(100))));
-  ASSERT_STATUS_OK(
-      HasCell(table, "column_family", "0", "column_2", far_past_us_oldest,
-              ::google::cloud::internal::EncodeBigEndian(static_cast<std::int64_t>(200))));
-  ASSERT_STATUS_OK(
-      HasCell(table, "column_family", "0", "column_2",
-              integer_col.cells(0).timestamp_micros(),
-              ::google::cloud::internal::EncodeBigEndian(static_cast<std::int64_t>(101))));
+  ASSERT_STATUS_OK(HasCell(table, "column_family", "0", "column_2", far_past_us,
+                           ::google::cloud::internal::EncodeBigEndian(
+                               static_cast<std::int64_t>(100))));
+  ASSERT_STATUS_OK(HasCell(table, "column_family", "0", "column_2",
+                           far_past_us_oldest,
+                           ::google::cloud::internal::EncodeBigEndian(
+                               static_cast<std::int64_t>(200))));
+  ASSERT_STATUS_OK(HasCell(table, "column_family", "0", "column_2",
+                           integer_col.cells(0).timestamp_micros(),
+                           ::google::cloud::internal::EncodeBigEndian(
+                               static_cast<std::int64_t>(101))));
 }
 
 // Test that the RPC does the right thing when the latest cell in the

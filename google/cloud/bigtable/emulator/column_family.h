@@ -20,12 +20,10 @@
 #include "google/cloud/bigtable/emulator/filter.h"
 #include "google/cloud/bigtable/emulator/filtered_map.h"
 #include "google/cloud/bigtable/emulator/range_set.h"
-#include "google/cloud/internal/big_endian.h"
-#include "google/cloud/internal/make_status.h"
-#include "google/cloud/status_or.h"
 #include "google/cloud/bigtable/read_modify_write_rule.h"
 #include "google/cloud/internal/big_endian.h"
 #include "google/cloud/internal/make_status.h"
+#include "google/cloud/status_or.h"
 #include "absl/types/optional.h"
 #include <google/bigtable/admin/v2/table.pb.h>
 #include <google/bigtable/v2/data.pb.h>

@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "google/cloud/bigtable/emulator/column_family.h"
-#include <google/bigtable/v2/types.pb.h>
 #include "google/cloud/internal/big_endian.h"
+#include <google/bigtable/v2/types.pb.h>
 #include <absl/types/optional.h>
 #include <array>
 #include <chrono>
