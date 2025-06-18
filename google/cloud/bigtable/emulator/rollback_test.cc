@@ -911,18 +911,18 @@ StatusOr<google::bigtable::v2::Column> GetColumn(
     if (ret.first->empty() || !ret.second) {
       return internal::InvalidArgumentError(
           "empty or repeated family name",
-          GCP_ERROR_INFO().WithMetadata(
-              "ReadModifyWriteRowReponse", resp.DebugString()));
+          GCP_ERROR_INFO().WithMetadata("ReadModifyWriteRowResponse",
+                                        resp.DebugString()));
     }
 
     std::set<std::string> column_qualifiers;
-    for (auto const& col: resp.row().families(i).columns()) {
+    for (auto const& col : resp.row().families(i).columns()) {
       auto ret = column_qualifiers.emplace(col.qualifier());
       if (ret.first->empty() || !ret.second) {
-      return internal::InvalidArgumentError(
-          "empty or repeated column qualifier",
-          GCP_ERROR_INFO().WithMetadata(
-              "ReadModifyWriteRowResponse", resp.DebugString()));
+        return internal::InvalidArgumentError(
+            "empty or repeated column qualifier",
+            GCP_ERROR_INFO().WithMetadata("ReadModifyWriteRowResponse",
+                                          resp.DebugString()));
       }
     }
   }
