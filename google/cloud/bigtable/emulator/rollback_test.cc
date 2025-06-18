@@ -1040,6 +1040,11 @@ TEST(ReadModifyWrite, SetAndNewerTimestampCase) {
                             .count() *
                         1000) +
                        usecs_in_day;
+  ASSERT_GT(far_future_us,
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::system_clock::now().time_since_epoch())
+                .count());
+
   auto far_future_us_latest = far_future_us + 1000;
 
   std::vector<SetCellParams> p = {
@@ -1130,6 +1135,10 @@ TEST(ReadModifyWrite, SetAndOlderTimestampCase) {
                           .count() *
                       1000) -
                      usecs_in_day;
+  ASSERT_LT(far_past_us,
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::system_clock::now().time_since_epoch())
+                .count());
   auto far_past_us_oldest = far_past_us - 1000;
 
   std::vector<SetCellParams> p = {
@@ -1233,6 +1242,11 @@ TEST(ReadModifyWrite, RollbackNewerTimestamp) {
                         1000) +
                        usecs_in_day;
 
+  ASSERT_GT(far_future_us,
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::system_clock::now().time_since_epoch())
+                .count());
+
   std::vector<SetCellParams> p = {
       {"column_family", "column_1", far_future_us, "prefix"},
   };
@@ -1289,6 +1303,10 @@ TEST(ReadModifyWrite, RollbackOlderTimestamp) {
                           .count() *
                       1000) -
                      usecs_in_day;
+  ASSERT_LT(far_past_us,
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::system_clock::now().time_since_epoch())
+                .count());
 
   std::vector<SetCellParams> p = {
       {"column_family", "column_1", far_past_us, "old"},
