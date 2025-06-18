@@ -992,9 +992,9 @@ TEST(ReadModifyWrite, Unsetcase) {
   ASSERT_EQ(col.cells(0).value(),
             internal::EncodeBigEndian(static_cast<std::int64_t>(1)));
 
-  maybe_column = GetColumn(response, "0", 0, "column_2");
-  ASSERT_STATUS_OK(maybe_column);
-  col = maybe_column.value();
+  auto maybe_column_2 = GetColumn(response, "0", 0, "column_2");
+  ASSERT_STATUS_OK(maybe_column_2);
+  col = maybe_column_2.value();
   ASSERT_EQ(col.cells_size(), 1);
   ASSERT_GE(std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::microseconds(col.cells(0).timestamp_micros())),
@@ -1010,9 +1010,9 @@ TEST(ReadModifyWrite, Unsetcase) {
   ASSERT_EQ(cell_it->second,
             internal::EncodeBigEndian(static_cast<std::int64_t>(1)));
 
-  maybe_cells = GetColumn(table, "column_family", "0", "column_2");
-  ASSERT_STATUS_OK(maybe_cells);
-  cells = maybe_cells.value();
+  auto maybe_cells_2 = GetColumn(table, "column_family", "0", "column_2");
+  ASSERT_STATUS_OK(maybe_cells_2);
+  cells = maybe_cells_2.value();
   ASSERT_EQ(cells.size(), 1);
   cell_it = cells.begin();
   ASSERT_GE(cell_it->first, system_time_ms_before);
@@ -1089,9 +1089,9 @@ TEST(ReadModifyWrite, SetAndNewerTimestampCase) {
   ASSERT_EQ(col.cells(0).timestamp_micros(), far_future_us_latest);
   ASSERT_EQ(col.cells(0).value(), "latest_with_suffix");
 
-  maybe_column = GetColumn(response, "0", 0, "column_2");
-  ASSERT_STATUS_OK(maybe_column);
-  col = maybe_column.value();
+  auto maybe_column_2 = GetColumn(response, "0", 0, "column_2");
+  ASSERT_STATUS_OK(maybe_column_2);
+  col = maybe_column_2.value();
   ASSERT_EQ(col.cells_size(), 1);
   ASSERT_EQ(col.cells(0).timestamp_micros(), far_future_us_latest);
   ASSERT_EQ(col.cells(0).value(),
@@ -1183,9 +1183,9 @@ TEST(ReadModifyWrite, SetAndOlderTimestampCase) {
   ASSERT_GE(col.cells(0).timestamp_micros(), system_time_us_before);
   ASSERT_EQ(col.cells(0).value(), "old_with_suffix");
 
-  maybe_column = GetColumn(response, "0", 0, "column_2");
-  ASSERT_STATUS_OK(maybe_column);
-  auto& integer_col = maybe_column.value();
+  auto maybe_column_2 = GetColumn(response, "0", 0, "column_2");
+  ASSERT_STATUS_OK(maybe_column_2);
+  auto& integer_col = maybe_column_2.value();
   ASSERT_EQ(integer_col.cells_size(), 1);
   ASSERT_GE(integer_col.cells(0).timestamp_micros(), system_time_us_before);
   ASSERT_EQ(integer_col.cells(0).value(),
