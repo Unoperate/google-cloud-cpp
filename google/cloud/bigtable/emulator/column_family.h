@@ -441,7 +441,7 @@ class ColumnFamily {
       return existing_value;
     }
 
-    return google::cloud::internal::EncodeBigEndian(new_int.value());
+    return new_value;
   };
 
   static StatusOr<std::string> MinUpdateCellBEInt64(
@@ -461,7 +461,7 @@ class ColumnFamily {
       return existing_value;
     }
 
-    return google::cloud::internal::EncodeBigEndian(new_int.value());
+    return new_value;
   };
 
   std::function<StatusOr<std::string>(std::string const&, std::string&&)>
