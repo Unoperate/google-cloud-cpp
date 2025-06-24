@@ -95,9 +95,9 @@ class ColumnRow {
                                       std::string const& value);
 
   StatusOr<absl::optional<std::string>> UpdateCell(
-      std::chrono::milliseconds timestamp, std::string const& value,
-      std::function<StatusOr<std::string>(
-          std::string const&, std::string const&&)> const& update_fn);
+      std::chrono::milliseconds timestamp, std::string& value,
+      std::function<StatusOr<std::string>(std::string const&,
+                                          std::string&&)> const& update_fn);
 
   /**
    * Delete cells falling into a given timestamp range.
@@ -187,9 +187,9 @@ class ColumnFamilyRow {
 
   StatusOr<absl::optional<std::string>> UpdateCell(
       std::string const& column_qualifier, std::chrono::milliseconds timestamp,
-      std::string const& value,
-      std::function<StatusOr<std::string>(
-          std::string const&, std::string const&&)> const& update_fn);
+      std::string& value,
+      std::function<StatusOr<std::string>(std::string const&,
+                                          std::string&&)> const& update_fn);
 
   /**
    * Delete cells falling into a given timestamp range in one column.
@@ -312,7 +312,7 @@ class ColumnFamily {
    */
   StatusOr<absl::optional<std::string>> UpdateCell(
       std::string const& row_key, std::string const& column_qualifier,
-      std::chrono::milliseconds timestamp, std::string const& value);
+      std::chrono::milliseconds timestamp, std::string& value);
 
   /**
    * Delete the whole row from this column family.
@@ -438,7 +438,7 @@ class ColumnFamily {
     }
 
     if (existing_int.value() > new_int.value()) {
-      return google::cloud::internal::EncodeBigEndian(existing_int.value());
+      return existing_value;
     }
 
     return google::cloud::internal::EncodeBigEndian(new_int.value());
@@ -458,13 +458,13 @@ class ColumnFamily {
     }
 
     if (existing_int.value() < new_int.value()) {
-      return google::cloud::internal::EncodeBigEndian(existing_int.value());
+      return existing_value;
     }
 
     return google::cloud::internal::EncodeBigEndian(new_int.value());
   };
 
-  std::function<StatusOr<std::string>(std::string const&, std::string const&&)>
+  std::function<StatusOr<std::string>(std::string const&, std::string&&)>
       update_cell_ = DefaultUpdateCell;
 };
 
