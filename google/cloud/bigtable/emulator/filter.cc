@@ -768,6 +768,15 @@ StatusOr<CellStreamConstructor> CreateFilterImpl(
           std::move(source),
           [pattern = pattern](
               CellView const& cell_view) mutable -> absl::optional<NextMode> {
+            std::cerr
+                << "Pattern: '"
+                << pattern->pattern()
+                << "', family: '"
+                << cell_view.column_family()
+                << "', match: "
+                << re2::RE2::PartialMatch(cell_view.column_family(), *pattern)
+                << std::endl;
+
             if (re2::RE2::PartialMatch(cell_view.column_family(), *pattern)) {
               return {};
             }
@@ -1119,6 +1128,10 @@ StatusOr<CellStreamConstructor> CreateFilterImpl(
 StatusOr<CellStream> CreateFilter(
     ::google::bigtable::v2::RowFilter const& filter,
     CellStreamConstructor source_ctor) {
+  std::cerr << "CreateFilter" << std::endl;
+  std::cerr << "filter:" << std::endl;
+  std::cerr << filter.DebugString() << std::endl;
+
   std::vector<CellStreamConstructor> direct_sink_ctors;
   if (filter.has_sink()) {
     if (!filter.sink()) {
@@ -1128,6 +1141,7 @@ StatusOr<CellStream> CreateFilter(
     }
     return source_ctor();
   }
+
   auto maybe_filter_ctor =
       CreateFilterImpl(filter, std::move(source_ctor), direct_sink_ctors);
   if (!maybe_filter_ctor) {

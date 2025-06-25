@@ -401,27 +401,33 @@ StatusOr<CellStream> Table::CreateCellStream(
 }
 
 bool FilteredTableStream::ApplyFilter(InternalFilter const& internal_filter) {
-  if (!absl::holds_alternative<FamilyNameRegex>(internal_filter)) {
-    return MergeCellStreams::ApplyFilter(internal_filter);
-  }
-  for (auto stream_it = unfinished_streams_.begin();
-       stream_it != unfinished_streams_.end(); ++stream_it) {
-    auto const* cf_stream =
-        dynamic_cast<FilteredColumnFamilyStream const*>(&(*stream_it)->impl());
-    assert(cf_stream);
-    if (!re2::RE2::PartialMatch(
-            cf_stream->column_family_name(),
-            *absl::get<FamilyNameRegex>(internal_filter).regex)) {
-      auto last_it = std::prev(unfinished_streams_.end());
-      if (stream_it == last_it) {
-        unfinished_streams_.pop_back();
-        break;
-      }
-      stream_it->swap(unfinished_streams_.back());
-      unfinished_streams_.pop_back();
-    }
-  }
-  return true;
+  bool isFamilyNameRegex = absl::holds_alternative<FamilyNameRegex>(internal_filter);
+  bool result = MergeCellStreams::ApplyFilter(internal_filter);
+
+  std::cerr
+      << "FilteredTableStream::ApplyFilter(): "
+      << "isFamilyNameRegex: " << isFamilyNameRegex
+      << ", applied: " << result << std::endl;
+  return result;
+
+//  for (auto stream_it = unfinished_streams_.begin();
+//       stream_it != unfinished_streams_.end(); ++stream_it) {
+//    auto const* cf_stream =
+//        dynamic_cast<FilteredColumnFamilyStream const*>(&(*stream_it)->impl());
+//    assert(cf_stream);
+//    if (!re2::RE2::PartialMatch(
+//            cf_stream->column_family_name(),
+//            *absl::get<FamilyNameRegex>(internal_filter).regex)) {
+//      auto last_it = std::prev(unfinished_streams_.end());
+//      if (stream_it == last_it) {
+//        unfinished_streams_.pop_back();
+//        break;
+//      }
+//      stream_it->swap(unfinished_streams_.back());
+//      unfinished_streams_.pop_back();
+//    }
+//  }
+//  return true;
 }
 
 std::vector<CellStream> FilteredTableStream::CreateCellStreams(
