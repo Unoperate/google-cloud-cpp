@@ -827,8 +827,10 @@ StatusOr<CellStreamConstructor> CreateFilterImpl(
                                  range = *std::move(maybe_range)] {
       auto source = source_ctor();
       if (source.ApplyFilter(ColumnRange{family_name, range})) {
+        std::cerr << "ColumnRange: source.ApplyFilter succeeded with family_name: " << family_name << std::endl;
         return source;
       }
+      std::cerr << "ColumnRange: had to make a new filter" << std::endl;
       return MakeTrivialFilter(
           std::move(source),
           [range,

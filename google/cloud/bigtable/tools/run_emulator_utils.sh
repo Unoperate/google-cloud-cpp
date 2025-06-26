@@ -37,11 +37,7 @@ function kill_emulators() {
 
   for log in emulator.log instance-admin-emulator.log; do
     echo "================ ${log} ================"
-    cat --number --show-nonprinting "${HOME}/${log}" | head || true
-    cat --number --show-nonprinting "${BINARY_DIR:-}/${log}" | head || true
-    echo "================ ${log} ================"
-    cat --number --show-nonprinting "${HOME}/${log}" | tail || true
-    cat --number --show-nonprinting "${BINARY_DIR:-}/${log}" | tail || true
+    cat --number --show-nonprinting "${BINARY_DIR:-}/${log}" || true
     echo "================ ${log} ================"
   done
 }
