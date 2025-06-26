@@ -322,6 +322,10 @@ class FilteredColumnFamilyStream::FilterApply {
   bool operator()(ColumnRange const& column_range) {
     if (column_range.column_family == parent_.column_family_name_) {
       parent_.column_ranges_.Intersect(column_range.range);
+    } else {
+      std::string whatever = "1";
+      auto empty = StringRangeSet::Range(whatever, true, whatever, true);
+      parent_.column_ranges_.Intersect(empty);
     }
     return true;
   }
