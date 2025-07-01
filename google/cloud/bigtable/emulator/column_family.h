@@ -424,8 +424,8 @@ class ColumnFamily {
     if (!existing_int) {
       return existing_int.status();
     }
-    auto new_int = google::cloud::internal::DecodeBigEndian<std::int64_t>(
-        std::move(new_value));
+    auto new_int =
+        google::cloud::internal::DecodeBigEndian<std::int64_t>(new_value);
     if (!new_int) {
       return new_int.status();
     }
@@ -444,8 +444,8 @@ class ColumnFamily {
     if (!existing_int) {
       return existing_int.status();
     }
-    auto new_int = google::cloud::internal::DecodeBigEndian<std::int64_t>(
-        std::move(new_value));
+    auto new_int =
+        google::cloud::internal::DecodeBigEndian<std::int64_t>(new_value);
     if (!new_int) {
       return new_int.status();
     }
