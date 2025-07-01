@@ -517,11 +517,15 @@ Table::CheckAndMutateRow(
 Status Table::ReadRows(google::bigtable::v2::ReadRowsRequest const& request,
                        RowStreamer& row_streamer) const {
   std::shared_ptr<StringRangeSet> row_set;
-  if (request.has_rows()) {
+  // We need to check that, not only do we have rows, but that it is
+  // not empty (i.e. at least one of row_range or rows is specified).
+  if (request.has_rows() && (request.rows().row_ranges_size() > 0 ||
+                             request.rows().row_keys_size() > 0)) {
     auto maybe_row_set = CreateStringRangeSet(request.rows());
     if (!maybe_row_set) {
       return maybe_row_set.status();
     }
+
     row_set = std::make_shared<StringRangeSet>(*std::move(maybe_row_set));
   } else {
     row_set = std::make_shared<StringRangeSet>(StringRangeSet::All());
