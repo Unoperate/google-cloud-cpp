@@ -29,9 +29,6 @@ namespace {
 
 bool PassAllFilters(InternalFilter const&) { return true; }
 
-// We need to ensure that the value outlives the reference stored in CellView.
-std::string const kStrippedValue;
-
 }  // namespace
 
 void CellStream::Next(NextMode mode) {

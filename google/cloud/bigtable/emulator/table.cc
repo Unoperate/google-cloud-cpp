@@ -420,12 +420,6 @@ bool FilteredTableStream::ApplyFilter(InternalFilter const& internal_filter) {
         (absl::holds_alternative<ColumnRange>(internal_filter) &&
          absl::get<ColumnRange>(internal_filter).column_family !=
              cf_stream_mutable->column_family_name())) {
-      auto last_it = std::prev(unfinished_streams_.end());
-      if (stream_it == last_it) {
-        unfinished_streams_.pop_back();
-        break;
-      }
-
       stream_it = unfinished_streams_.erase(stream_it);
       continue;
     }
