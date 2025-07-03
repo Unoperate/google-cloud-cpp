@@ -402,8 +402,8 @@ bool FilteredTableStream::ApplyFilter(InternalFilter const& internal_filter) {
   // internal_filter is either FamilyNameRegex or ColumnRange
   for (auto stream_it = unfinished_streams_.begin();
        stream_it != unfinished_streams_.end();) {
-
-    auto* cf_stream = dynamic_cast<FilteredColumnFamilyStream *>(&(*stream_it)->impl());
+    auto* cf_stream =
+        dynamic_cast<FilteredColumnFamilyStream*>(&(*stream_it)->impl());
     assert(cf_stream);
 
     if ((absl::holds_alternative<FamilyNameRegex>(internal_filter) &&
