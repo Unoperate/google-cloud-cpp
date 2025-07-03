@@ -1930,8 +1930,8 @@ TEST(FiltersEndToEnd, ColumnRange) {
   auto& stream = *maybe_stream;
   for (; stream; ++stream) {
     actual.emplace_back(stream->row_key(), stream->column_family(),
-                      stream->column_qualifier(),
-                      stream->timestamp(), stream->value());
+                        stream->column_qualifier(), stream->timestamp(),
+                        stream->value());
   }
 
   ASSERT_EQ(expected, actual);
