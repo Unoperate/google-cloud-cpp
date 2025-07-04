@@ -642,7 +642,7 @@ Status Table::SampleRowKeys(
   //
   // That is every time a row is sampled, we do: offset += (n *
   // row_size_estimate).
-  std::size_t row_size_estimate;
+  std::size_t row_size_estimate = 0;
 
   for (; stream; ++stream) {
     auto row_key = stream->row_key();
