@@ -645,15 +645,13 @@ Status Table::SampleRowKeys(
   std::size_t row_size_estimate = 0;
 
   for (; stream; ++stream) {
-    auto row_key = stream->row_key();
-
-    if (current_row_key.has_value() && row_key != current_row_key.value()) {
+    if (current_row_key.has_value() && stream->row_key() != current_row_key.value()) {
       break;
     }
 
-    current_row_key = row_key;
+    current_row_key = stream->row_key();
 
-    row_size_estimate += row_key.size();
+    row_size_estimate += stream->row_key().size();
     row_size_estimate += stream->column_qualifier().size();
     row_size_estimate += stream->value().size();
     row_size_estimate += sizeof(stream->timestamp());
