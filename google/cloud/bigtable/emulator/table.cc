@@ -40,9 +40,9 @@
 #include <exception>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <random>
 #include <ratio>
-#include <optional>
 #include <string>
 #include <type_traits>
 
@@ -620,7 +620,8 @@ Status Table::SampleRowKeys(
                                       absl::StrFormat("%f", pass_probability)));
   }
 
-  auto sample_every = static_cast<std::uint64_t>(std::ceil(1.0/pass_probability));
+  auto sample_every =
+      static_cast<std::uint64_t>(std::ceil(1.0 / pass_probability));
 
   std::lock_guard<std::mutex> lock(mu_);
 
@@ -710,7 +711,7 @@ Status Table::SampleRowKeys(
   if (!wrote_a_sample) {
     std::size_t max = 0;
 
-    for (auto const& cf: *get()) {
+    for (auto const& cf : *get()) {
       if (cf.second->size() > max) {
         max = cf.second->size();
       }
