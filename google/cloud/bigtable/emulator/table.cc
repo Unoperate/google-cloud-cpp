@@ -25,6 +25,7 @@
 #include <google/bigtable/admin/v2/types.pb.h>
 #include <google/bigtable/v2/bigtable.pb.h>
 #include <google/bigtable/v2/data.pb.h>
+#include <absl/strings/ascii.h>
 #include <absl/strings/match.h>
 #include <absl/strings/str_format.h>
 #include <absl/types/optional.h>
@@ -32,6 +33,7 @@
 #include <re2/re2.h>
 #include <chrono>
 #include <climits>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -611,6 +613,15 @@ bool Table::IsDeleteProtectedNoLock() const {
 Status Table::SampleRowKeys(
     double pass_probability,
     grpc::ServerWriter<google::bigtable::v2::SampleRowKeysResponse>* writer) {
+  if (pass_probability <= 0.0) {
+    return InvalidArgumentError(
+        "The sampling probabality must be positive",
+        GCP_ERROR_INFO().WithMetadata("provided sampling probability",
+                                      absl::StrFormat("%f", pass_probability)));
+  }
+
+  auto sample_every = static_cast<std::uint64_t>(std::ceil(1.0/pass_probability));
+
   std::lock_guard<std::mutex> lock(mu_);
 
   // First, stream all rows and cells and compute the offsets.
@@ -622,54 +633,45 @@ Status Table::SampleRowKeys(
 
   auto& stream = *maybe_all_rows_steam;
 
-  std::map<std::string, std::size_t> row_offset_map;
-  size_t row_offset = 0;
-
-  std::string current_row_key;
-  bool first_row = true;
-
-  std::map<std::string, std::size_t> column_family_size_map;
-  std::map<std::string, std::size_t> column_qualifier_size_map;
-  size_t timestamp_total_row_size = 0;
-  size_t value_total_row_size = 0;
+  absl::optional<std::string> current_row_key;
+  // The first row read will be used as a constant estimate of row
+  // sizes. If we are sampling 1/n rows, the value added to the offset
+  // (which is to be regarded as the size of all the rows before the
+  // sampled one) will be (n * row_size_estimate).
+  //
+  // That is every time a row is sampled, we do: offset += (n *
+  // row_size_estimate).
+  std::size_t row_size_estimate;
 
   for (; stream; ++stream) {
     auto row_key = stream->row_key();
 
-    if ((row_key != current_row_key) || first_row) {
-      row_offset += current_row_key.size();
-
-      for (auto const& cf : column_family_size_map) {
-        row_offset += cf.second;
-      }
-
-      for (auto const& cq : column_qualifier_size_map) {
-        row_offset += cq.second;
-      }
-
-      row_offset += timestamp_total_row_size;
-      row_offset += value_total_row_size;
-
-      // The rows before this (row_key) have this size in total.
-      row_offset_map[row_key] = row_offset;
-
-      current_row_key = row_key;
-
-      first_row = false;
-
-      column_family_size_map.clear();
-      column_qualifier_size_map.clear();
-      timestamp_total_row_size = 0;
-      value_total_row_size = 0;
+    if (current_row_key.has_value() && row_key != current_row_key.value()) {
+      break;
     }
 
-    column_family_size_map.emplace(stream->column_family(),
-                                   stream->column_family().size());
-    column_qualifier_size_map.emplace(stream->column_qualifier(),
-                                      stream->column_qualifier().size());
-    timestamp_total_row_size += sizeof(stream->timestamp());
-    value_total_row_size += stream->value().size();
+    current_row_key = row_key;
+
+    row_size_estimate += row_key.size();
+    row_size_estimate += stream->column_qualifier().size();
+    row_size_estimate += stream->value().size();
+    row_size_estimate += sizeof(stream->timestamp());
   }
+
+  if (!current_row_key.has_value()) {
+    // No rows in the table
+    google::bigtable::v2::SampleRowKeysResponse resp;
+    resp.set_row_key("");
+    resp.set_offset_bytes(0);
+
+    auto opts = grpc::WriteOptions();
+    opts.set_last_message();
+
+    writer->WriteLast(std::move(resp), opts);
+    return Status();
+  }
+
+  std::int64_t offset_delta = sample_every * row_size_estimate;
 
   google::bigtable::v2::RowFilter sample_filter;
   sample_filter.set_row_sample_filter(pass_probability);
@@ -681,12 +683,15 @@ Status Table::SampleRowKeys(
 
   auto& sampled_stream = *maybe_stream;
 
-  bool wrote_a_sample = false;
+  std::int64_t offset = 0;
+
+  bool wrote_a_sample;
 
   for (; sampled_stream; ++sampled_stream) {
     google::bigtable::v2::SampleRowKeysResponse resp;
+    offset += offset_delta;
     resp.set_row_key(sampled_stream->row_key());
-    resp.set_offset_bytes(row_offset_map[sampled_stream->row_key()]);
+    resp.set_offset_bytes(offset);
 
     writer->Write(std::move(resp));
 
@@ -697,23 +702,41 @@ Status Table::SampleRowKeys(
   // table with at least one row, then at least one row sampele is
   // returned.
   //
-  // In such a case, return the last row key.
-  if (!wrote_a_sample && !row_offset_map.empty()) {
-    auto it = std::prev(row_offset_map.end());
+  // In such a case, return any string that represents the last key,
+  // and an offset that is the estimated row size * the number of rows
+  // in the largest column family. We can return any string without
+  // lookup because the keys returned need not ever have been written
+  // to.
+  if (!wrote_a_sample) {
+    std::size_t max = 0;
+
+    for (auto const& cf: *get()) {
+      if (cf.second->size() > max) {
+        max = cf.second->size();
+      }
+    }
 
     google::bigtable::v2::SampleRowKeysResponse resp;
-    resp.set_row_key(it->first);
-    resp.set_offset_bytes(it->second);
+    resp.set_row_key("last_key");
+    resp.set_offset_bytes(max * row_size_estimate);
+    writer->Write(std::move(resp));
+
+    google::bigtable::v2::SampleRowKeysResponse last_resp;
+    last_resp.set_row_key("");
+    last_resp.set_offset_bytes((max * row_size_estimate) + 1);
+
+    auto opts = grpc::WriteOptions();
+    opts.set_last_message();
+
+    writer->WriteLast(std::move(last_resp), opts);
+    return Status();
   }
 
-  // Client code expects the last response to be an empty row key
-  // and moreover it also expects the offset for the last response
-  // to be more than every other offset.
   google::bigtable::v2::SampleRowKeysResponse resp;
   resp.set_row_key("");
   // Client test code expects offset_bytes to be strictly
   // increasing.
-  resp.set_offset_bytes(row_offset + 1);
+  resp.set_offset_bytes(offset + 1);
   auto opts = grpc::WriteOptions();
   opts.set_last_message();
   writer->WriteLast(std::move(resp), opts);
