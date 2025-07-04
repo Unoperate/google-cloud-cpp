@@ -73,6 +73,10 @@ class Table : public std::enable_shared_from_this<Table> {
     return DoMutationsWithPossibleRollback(row_key, mutations);
   }
 
+  StatusOr<CellStream> CreateCellStream(
+      std::shared_ptr<StringRangeSet> range_set,
+      absl::optional<google::bigtable::v2::RowFilter>) const;
+
   Status ReadRows(google::bigtable::v2::ReadRowsRequest const& request,
                   RowStreamer& row_streamer) const;
 
@@ -110,9 +114,6 @@ class Table : public std::enable_shared_from_this<Table> {
       MESSAGE const& message) const;
   bool IsDeleteProtectedNoLock() const;
   Status Construct(google::bigtable::admin::v2::Table schema);
-  StatusOr<CellStream> CreateCellStream(
-      std::shared_ptr<StringRangeSet> range_set,
-      absl::optional<google::bigtable::v2::RowFilter>) const;
   Status DoMutationsWithPossibleRollback(
       std::string const& row_key,
       google::protobuf::RepeatedPtrField<google::bigtable::v2::Mutation> const&
