@@ -22,8 +22,8 @@
 #include "google/cloud/status.h"
 #include "google/cloud/status_or.h"
 #include "google/protobuf/util/field_mask_util.h"
-#include <google/bigtable/admin/v2/table.pb.h>
 #include <google/bigtable/admin/v2/bigtable_table_admin.pb.h>
+#include <google/bigtable/admin/v2/table.pb.h>
 #include <google/bigtable/admin/v2/types.pb.h>
 #include <google/bigtable/v2/bigtable.pb.h>
 #include <google/bigtable/v2/data.pb.h>
@@ -41,8 +41,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
-#include <iostream>
 #include <functional>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -652,7 +652,8 @@ Status Table::SampleRowKeys(
   std::size_t row_size_estimate = 0;
 
   for (; stream; ++stream) {
-    if (first_row_key.has_value() && stream->row_key() != first_row_key.value()) {
+    if (first_row_key.has_value() &&
+        stream->row_key() != first_row_key.value()) {
       break;
     }
 
