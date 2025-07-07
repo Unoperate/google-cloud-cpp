@@ -726,20 +726,14 @@ Status Table::SampleRowKeys(
       }
     }
 
+    std::int64_t this_offset = row_count_estimate * row_size_estimate;
+
     google::bigtable::v2::SampleRowKeysResponse resp;
     resp.set_row_key("last_key");
-    resp.set_offset_bytes(row_count_estimate * row_size_estimate);
+    resp.set_offset_bytes(this_offset);
     writer->Write(std::move(resp));
 
-    google::bigtable::v2::SampleRowKeysResponse last_resp;
-    last_resp.set_row_key("");
-    last_resp.set_offset_bytes((row_count_estimate * row_size_estimate) + 1);
-
-    auto opts = grpc::WriteOptions();
-    opts.set_last_message();
-
-    writer->WriteLast(std::move(last_resp), opts);
-    return Status();
+    offset += this_offset;
   }
 
   google::bigtable::v2::SampleRowKeysResponse resp;
