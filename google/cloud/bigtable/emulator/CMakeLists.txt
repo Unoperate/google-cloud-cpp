@@ -102,6 +102,7 @@ foreach (fname ${bigtable_emulator_programs})
         ${target}
         PRIVATE bigtable_emulator_common
                 absl::flags
+                absl::flags_parse
                 google-cloud-cpp::bigtable
                 google-cloud-cpp::bigtable_protos
                 google-cloud-cpp::grpc_utils
