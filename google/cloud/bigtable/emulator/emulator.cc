@@ -37,10 +37,10 @@ int main(int argc, char* argv[]) {
       google::cloud::bigtable::emulator::CreateDefaultEmulatorServer(
           absl::GetFlag(FLAGS_host), absl::GetFlag(FLAGS_port));
   if (!maybe_server) {
-    std::cerr << "CreateDefaultEmulatorServer() failed. See other logging for "
+    std::cerr << "CreateDefaultEmulatorServer() failed. See logs for "
                  "possible reason"
               << std::endl;
-    std::exit(1);
+    return 1;
   }
 
   auto& server = maybe_server.value();

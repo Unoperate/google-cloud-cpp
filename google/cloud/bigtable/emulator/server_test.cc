@@ -21,6 +21,7 @@
 #include <google/bigtable/v2/bigtable.pb.h>
 #include <gmock/gmock.h>
 #include <grpcpp/grpcpp.h>
+#include <gtest/gtest.h>
 
 namespace google {
 namespace cloud {
@@ -216,6 +217,12 @@ TEST_F(ServerTest, TableAdminUpdateTable) {
   grpc::Status status =
       TableAdminClient()->UpdateTable(&ctx_, request, &response);
   EXPECT_NE(status.error_code(), grpc::StatusCode::UNIMPLEMENTED);
+}
+
+// Test that the failure path for server creation does not crash.
+TEST(ServerCreationTest, TestServerCreationFailurePath) {
+  auto maybe_server = CreateDefaultEmulatorServer("invalid_host_address", 0);
+  ASSERT_EQ(false, maybe_server.ok());
 }
 
 }  // namespace emulator
