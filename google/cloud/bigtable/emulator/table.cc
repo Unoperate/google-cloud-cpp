@@ -641,7 +641,7 @@ Status Table::SampleRowKeys(
 
   auto& stream = *maybe_all_rows_stream;
 
-  absl::optional<std::string> current_row_key;
+  absl::optional<std::string> first_row_key;
   // The first row read will be used as a constant estimate of row
   // sizes. If we are sampling 1/n rows, the value added to the offset
   // (which is to be regarded as the size of all the rows before the
@@ -652,19 +652,23 @@ Status Table::SampleRowKeys(
   std::size_t row_size_estimate = 0;
 
   for (; stream; ++stream) {
-    if (current_row_key.has_value() && stream->row_key() != current_row_key.value()) {
+    if (first_row_key.has_value() && stream->row_key() != first_row_key.value()) {
       break;
     }
 
-    current_row_key = stream->row_key();
+    if (!first_row_key.has_value()) {
+      // Count the size of the row_key just once
+      row_size_estimate += stream->row_key().size();
+    }
 
-    row_size_estimate += stream->row_key().size();
+    first_row_key = stream->row_key();
+
     row_size_estimate += stream->column_qualifier().size();
     row_size_estimate += stream->value().size();
     row_size_estimate += sizeof(stream->timestamp());
   }
 
-  if (!current_row_key.has_value()) {
+  if (!first_row_key.has_value()) {
     // No rows in the table
     google::bigtable::v2::SampleRowKeysResponse resp;
     resp.set_row_key("");
