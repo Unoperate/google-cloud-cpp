@@ -634,12 +634,12 @@ Status Table::SampleRowKeys(
 
   // First, stream all rows and cells and compute the offsets.
   auto all_rows_set = std::make_shared<StringRangeSet>(StringRangeSet::All());
-  auto maybe_all_rows_steam = CreateCellStream(all_rows_set, absl::nullopt);
-  if (!maybe_all_rows_steam) {
-    return maybe_all_rows_steam.status();
+  auto maybe_all_rows_stream = CreateCellStream(all_rows_set, absl::nullopt);
+  if (!maybe_all_rows_stream) {
+    return maybe_all_rows_stream.status();
   }
 
-  auto& stream = *maybe_all_rows_steam;
+  auto& stream = *maybe_all_rows_stream;
 
   absl::optional<std::string> current_row_key;
   // The first row read will be used as a constant estimate of row
