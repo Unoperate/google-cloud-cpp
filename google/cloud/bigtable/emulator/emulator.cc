@@ -13,7 +13,16 @@
 // limitations under the License.
 
 #include "google/cloud/bigtable/emulator/server.h"
+#include "absl/flags/flag.h"
+#include <cstdint>
 #include <iostream>
+#include <string>
+
+ABSL_FLAG(std::string, address, "",
+          "address:port number to listen on. Has priority over host/port");
+ABSL_FLAG(std::string, host, "localhost",
+          "the address to bind to on the local machine");
+ABSL_FLAG(std::int16_t, port, 8888, "the port to bind to on the local machine");
 
 int main() {
   auto server = google::cloud::bigtable::emulator::CreateDefaultEmulatorServer(

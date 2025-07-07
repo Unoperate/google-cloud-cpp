@@ -101,6 +101,7 @@ foreach (fname ${bigtable_emulator_programs})
     target_link_libraries(
         ${target}
         PRIVATE bigtable_emulator_common
+                absl::flags
                 google-cloud-cpp::bigtable
                 google-cloud-cpp::bigtable_protos
                 google-cloud-cpp::grpc_utils
