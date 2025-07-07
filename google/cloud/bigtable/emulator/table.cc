@@ -697,7 +697,7 @@ Status Table::SampleRowKeys(
 
   bool wrote_a_sample;
 
-  for (; sampled_stream; ++sampled_stream) {
+  for (; sampled_stream; sampled_stream.Next(NextMode::kRow)) {
     google::bigtable::v2::SampleRowKeysResponse resp;
     offset += offset_delta;
     resp.set_row_key(sampled_stream->row_key());
@@ -709,31 +709,31 @@ Status Table::SampleRowKeys(
   }
 
   // Cloud bigtable client tests expect that, if they populated the
-  // table with at least one row, then at least one row sampele is
+  // table with at least one row, then at least one row sample is
   // returned.
   //
   // In such a case, return any string that represents the last key,
   // and an offset that is the estimated row size * the number of rows
-  // in the largest column family. We can return any string without
-  // lookup because the keys returned need not ever have been written
-  // to.
+  // in the largest column family. We can return any string because
+  // the keys returned need not be in the table. See the proto
+  // specification.
   if (!wrote_a_sample) {
-    std::size_t max = 0;
+    std::size_t row_count_estimate = 0;
 
     for (auto const& cf : *get()) {
-      if (cf.second->size() > max) {
-        max = cf.second->size();
+      if (cf.second->size() > row_count_estimate) {
+        row_count_estimate = cf.second->size();
       }
     }
 
     google::bigtable::v2::SampleRowKeysResponse resp;
     resp.set_row_key("last_key");
-    resp.set_offset_bytes(max * row_size_estimate);
+    resp.set_offset_bytes(row_count_estimate * row_size_estimate);
     writer->Write(std::move(resp));
 
     google::bigtable::v2::SampleRowKeysResponse last_resp;
     last_resp.set_row_key("");
-    last_resp.set_offset_bytes((max * row_size_estimate) + 1);
+    last_resp.set_offset_bytes((row_count_estimate * row_size_estimate) + 1);
 
     auto opts = grpc::WriteOptions();
     opts.set_last_message();
