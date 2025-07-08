@@ -657,13 +657,9 @@ Status Table::SampleRowKeys(
       break;
     }
 
-    if (!first_row_key.has_value()) {
-      // Count the size of the row_key just once
-      row_size_estimate += stream->row_key().size();
-    }
-
     first_row_key = stream->row_key();
 
+    row_size_estimate += stream->row_key().size();
     row_size_estimate += stream->column_qualifier().size();
     row_size_estimate += stream->value().size();
     row_size_estimate += sizeof(stream->timestamp());
