@@ -19,12 +19,12 @@
 #include "google/cloud/bigtable/emulator/range_set.h"
 #include "google/cloud/status_or.h"
 #include <google/bigtable/v2/data.pb.h>
+#include <absl/types/internal/variant.h>
+#include <functional>
 #include <memory>
 #include <string>
-#include <absl/types/internal/variant.h>
 #include <utility>
 #include <vector>
-#include <functional>
 
 namespace re2 {
 class RE2;

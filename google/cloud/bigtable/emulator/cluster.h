@@ -19,11 +19,11 @@
 #include "google/cloud/status.h"
 #include "google/cloud/status_or.h"
 #include <google/bigtable/admin/v2/table.pb.h>
-#include <string>
-#include <vector>
+#include <map>
 #include <memory>
 #include <mutex>
-#include <map>
+#include <string>
+#include <vector>
 
 namespace google {
 namespace cloud {

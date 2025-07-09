@@ -14,11 +14,11 @@
 
 #include "google/cloud/bigtable/emulator/row_streamer.h"
 #include "google/cloud/bigtable/emulator/cell_view.h"
-#include <grpcpp/support/sync_stream.h>
 #include <google/bigtable/v2/bigtable.pb.h>
+#include <absl/types/optional.h>
+#include <grpcpp/support/sync_stream.h>
 #include <chrono>
 #include <utility>
-#include <absl/types/optional.h>
 
 namespace google {
 namespace cloud {

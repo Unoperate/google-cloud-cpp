@@ -19,8 +19,8 @@
 #include <google/rpc/error_details.pb.h>
 #include <grpcpp/support/status.h>
 #include <cstdint>
-#include <utility>
 #include <string>
+#include <utility>
 
 namespace google {
 namespace cloud {

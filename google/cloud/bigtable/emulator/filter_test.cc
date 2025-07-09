@@ -16,8 +16,8 @@
 #include "google/cloud/bigtable/emulator/cell_view.h"
 #include "google/cloud/bigtable/emulator/range_set.h"
 #include "google/cloud/bigtable/emulator/test_util.h"
-#include "google/cloud/status_or.h"
 #include "google/cloud/status.h"
+#include "google/cloud/status_or.h"
 #include "google/cloud/testing_util/chrono_literals.h"
 #include "google/cloud/testing_util/status_matchers.h"
 #include "gmock/gmock.h"
@@ -28,16 +28,16 @@
 #include <re2/re2.h>
 #include <algorithm>
 #include <chrono>
-#include <iterator>
-#include <map>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
-#include <cstddef>
+#include <iterator>
+#include <map>
 #include <memory>
 #include <ostream>
 #include <string>
-#include <utility>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 namespace google {

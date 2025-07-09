@@ -17,13 +17,13 @@
 #include "google/cloud/testing_util/chrono_literals.h"
 #include "google/cloud/testing_util/status_matchers.h"
 #include <gtest/gtest.h>
-#include <sstream>
-#include <set>
-#include <vector>
-#include <utility>
-#include <chrono>
 #include <algorithm>
+#include <chrono>
 #include <iterator>
+#include <set>
+#include <sstream>
+#include <utility>
+#include <vector>
 
 namespace google {
 namespace cloud {

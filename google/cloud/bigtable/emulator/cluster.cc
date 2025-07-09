@@ -19,14 +19,14 @@
 #include "google/cloud/status_or.h"
 #include "absl/strings/match.h"
 #include <google/bigtable/admin/v2/table.pb.h>
-#include <string>
-#include <utility>
 #include <iostream>
-#include <ostream>
-#include <mutex>
-#include <vector>
 #include <map>
 #include <memory>
+#include <mutex>
+#include <ostream>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace google {
 namespace cloud {

@@ -14,20 +14,20 @@
 
 #include "google/cloud/bigtable/emulator/filtered_map.h"
 #include "google/cloud/testing_util/chrono_literals.h"
-#include <vector>
-#include <string>
-#include <iterator>
-#include <initializer_list>
+#include <gtest/gtest.h>
+#include <re2/re2.h>
 #include <algorithm>
 #include <chrono>
-#include <gtest/gtest.h>
-#include <map>
-#include <functional>
-#include <limits>
 #include <cstdint>
+#include <functional>
+#include <initializer_list>
+#include <iterator>
+#include <limits>
+#include <map>
 #include <memory>
-#include <re2/re2.h>
+#include <string>
 #include <utility>
+#include <vector>
 
 namespace google {
 namespace cloud {

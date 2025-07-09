@@ -36,8 +36,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <utility>
 #include <string>
+#include <utility>
 
 namespace google {
 namespace cloud {

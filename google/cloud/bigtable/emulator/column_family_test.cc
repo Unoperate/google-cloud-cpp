@@ -19,11 +19,11 @@
 #include <google/bigtable/v2/data.pb.h>
 #include <gtest/gtest.h>
 #include <re2/re2.h>
-#include <string>
-#include <sstream>
-#include <ostream>
 #include <iterator>
 #include <memory>
+#include <ostream>
+#include <sstream>
+#include <string>
 
 namespace google {
 namespace cloud {
