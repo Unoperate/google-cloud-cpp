@@ -19,6 +19,9 @@
 #include <re2/re2.h>
 #include <functional>
 #include <iterator>
+#include <set>
+#include <memory>
+#include <vector>
 
 namespace google {
 namespace cloud {

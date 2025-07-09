@@ -14,8 +14,20 @@
 
 #include "google/cloud/bigtable/emulator/filtered_map.h"
 #include "google/cloud/testing_util/chrono_literals.h"
-#include <google/protobuf/text_format.h>
-#include <gmock/gmock.h>
+#include <vector>
+#include <string>
+#include <iterator>
+#include <initializer_list>
+#include <algorithm>
+#include <chrono>
+#include <gtest/gtest.h>
+#include <map>
+#include <functional>
+#include <limits>
+#include <cstdint>
+#include <memory>
+#include <re2/re2.h>
+#include <utility>
 
 namespace google {
 namespace cloud {

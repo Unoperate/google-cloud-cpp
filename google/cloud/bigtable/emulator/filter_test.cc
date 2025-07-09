@@ -13,18 +13,31 @@
 // limitations under the License.
 
 #include "google/cloud/bigtable/emulator/filter.h"
+#include "google/cloud/bigtable/emulator/cell_view.h"
 #include "google/cloud/bigtable/emulator/range_set.h"
-#include "google/cloud/bigtable/emulator/table.h"
 #include "google/cloud/bigtable/emulator/test_util.h"
+#include "google/cloud/status_or.h"
+#include "google/cloud/status.h"
 #include "google/cloud/testing_util/chrono_literals.h"
 #include "google/cloud/testing_util/status_matchers.h"
 #include "gmock/gmock.h"
+#include <google/bigtable/v2/data.pb.h>
+#include <absl/types/optional.h>
+#include <absl/types/variant.h>
 #include <gtest/gtest.h>
 #include <re2/re2.h>
 #include <algorithm>
 #include <chrono>
+#include <iterator>
+#include <map>
+#include <cstdint>
+#include <functional>
+#include <cstddef>
 #include <memory>
+#include <ostream>
 #include <string>
+#include <utility>
+#include <tuple>
 #include <vector>
 
 namespace google {
